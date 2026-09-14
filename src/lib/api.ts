@@ -1,4 +1,4 @@
-import { getAccessToken } from './supabase';
+import { getAccessToken, EDGE_FUNCTION_BASE } from './supabase';
 
 export interface ChatStreamHandlers {
   onMeta?: (meta: { conversation_id: string; message_id: string; model: string }) => void;
@@ -27,13 +27,12 @@ export async function authHeaders(): Promise<Record<string, string>> {
   return { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' };
 }
 
-// Stream a chat turn from /api/chat. Returns an abort function.
 export async function streamChat(
   payload: ChatStreamPayload,
   handlers: ChatStreamHandlers
 ): Promise<void> {
   const headers = await authHeaders();
-  const res = await fetch('/api/chat', {
+  const res = await fetch(`${EDGE_FUNCTION_BASE}/chat`, {
     method: 'POST',
     headers,
     body: JSON.stringify(payload),
@@ -83,7 +82,6 @@ export async function streamChat(
     if (done) break;
     buffer += decoder.decode(value, { stream: true });
 
-    // SSE events separated by blank line
     let sep: number;
     while ((sep = buffer.indexOf('\n\n')) !== -1) {
       const block = buffer.slice(0, sep);
@@ -106,12 +104,10 @@ export async function fetchModels(): Promise<{
   default_model: string;
 }> {
   const headers = await authHeaders();
-  const res = await fetch('/api/models', { headers });
+  const res = await fetch(`${EDGE_FUNCTION_BASE}/models`, { headers });
   if (!res.ok) throw new Error(`Failed to load models (${res.status})`);
   return res.json();
 }
-
-// ---- Helpers ----
 
 export function downloadFile(filename: string, content: string, mime = 'application/json') {
   const blob = new Blob([content], { type: mime });

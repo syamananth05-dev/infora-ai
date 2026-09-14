@@ -1,8 +1,23 @@
 import { createClient } from '@supabase/supabase-js';
 
-const url = import.meta.env.VITE_SUPABASE_URL;
-const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+// Supabase project: synapse (ap-south-1)
+// These values are public by design â€” the anon key is protected by RLS.
+const url = 'https://qoqemcsmujehkrksswlg.supabase.co';
+const anonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFvcWVtY3NtdWplaGtya3Nzd2xnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk0MDMxOTcsImV4cCI6MjEwNDk3OTE5N30.GGK3ucd6fncahYvqaiMsVn-V1fNbxwKUsVlN9XmEBhc';
 
-if (!url || !anonKey) {
-  throw new Error(
-    'Missing VITE_SUPABASE_URL / VITE_SUPABASE_ANON_KEY. Set them in .env (local) or Netlify env Ù…ÉÌ¸œ(€€¤ì)ô()•áÁ½ÉĞ½¹ÍĞÍÕÁ…‰…Í”€ôÉ•…Ñ•±¥•¹Ğ¡ÕÉ°°…¹½¹-•ä°ì(€…ÕÑ èì(€€€™±½İQåÁ”è€Á­”œ°(€€€Á•ÉÍ¥ÍÑM•ÍÍ¥½¸èÑÉÕ”°(€€€…ÕÑ½I•™É•Í¡Q½­•¸èÑÉÕ”°(€€€‘•Ñ•ÑM•ÍÍ¥½¹%¹UÉ°èÑÉÕ”°(€ô°)ô¤ì()•áÁ½ÉĞ…Íå¹Œ™Õ¹Ñ¥½¸•Ñ•ÍÍQ½­•¸ ¤èAÉ½µ¥Í”ñÍÑÉ¥¹œğ¹Õ±°øì(€½¹ÍĞì‘…Ñ„ô€ô…İ…¥ĞÍÕÁ…‰…Í”¹…ÕÑ ¹•ÑM•ÍÍ¥½¸ ¤ì(€É•ÑÕÉ¸‘…Ñ„¹Í•ÍÍ¥½¸ü¹…•ÍÍ}Ñ½­•¸€üü¹Õ±°ì)ô(
+export const SUPABASE_URL = url;
+export const EDGE_FUNCTION_BASE = `${url}/functions/v1`;
+
+export const supabase = createClient(url, anonKey, {
+  auth: {
+    flowType: 'pkce',
+    persistSession: true,
+    autoRefreshToken: true,
+    detectSessionInUrl: true,
+  },
+});
+
+export async function getAccessToken(): Promise<string | null> {
+  const { data } = await supabase.auth.getSession();
+  return data.session?.access_token ?? null;
+}
