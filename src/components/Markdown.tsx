@@ -15,12 +15,12 @@ function MarkdownInner({ content }: { content: string }) {
             <div className="code-block-wrap">
               <pre {...props}>{children}</pre>
             </div>
-          )
+          ),
           a: ({ children, href, ...props }) => (
             <a {...props} href={href} target="_blank" rel="noopener noreferrer">
               {children}
             </a>
-           ),
+          ),
         }}
       >
         {content}

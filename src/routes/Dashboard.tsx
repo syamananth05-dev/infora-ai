@@ -22,6 +22,7 @@ export default function Dashboard() {
         total_tokens_out: number;
         requests_24h: number;
         cost_30d: number;
+      };
     },
   });
 
@@ -106,5 +107,5 @@ function Stat({ label, value }: { label: string; value: string }) {
       <p className="text-xs text-surface-400">{label}</p>
       <p className="mt-1 text-xl font-semibold tabular-nums">{value}</p>
     </div>
- );
+  );
 }

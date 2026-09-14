@@ -68,11 +68,11 @@ export default function Settings() {
       const [convRes, msgRes] = await Promise.all([
         supabase.from('conversations').select('*').order('updated_at', { ascending: false }),
         supabase.from('messages').select('*').order('created_at', { ascending: true }),
-    ]);
+      ]);
       const payload = {
         exported_at: new Date().toISOString(),
         profile: { email: session?.user?.email, display_name: displayName },
-        conversations: conversations convRes.data ?? [],
+        conversations: convRes.data ?? [],
         messages: msgRes.data ?? [],
       };
       downloadFile('synapse-export.json', JSON.stringify(payload, null, 2));
@@ -224,7 +224,7 @@ export default function Settings() {
                     <td className="px-4 py-2.5 font-mono text-xs">{u.model}</td>
                     <td className="px-4 py-2.5 tabular-nums">{u.requests}</td>
                     <td className="px-4 py-2.5 tabular-nums">{formatTokens(u.tokens_in)} / {formatTokens(u.tokens_out)}</td>
-                    <td className="px-4 py-2.5 tabular-nums">{formatCost(u.cost_use)}</td>
+                    <td className="px-4 py-2.5 tabular-nums">{formatCost(u.cost_usd)}</td>
                   </tr>
                 ))}
                 {(usage ?? []).length === 0 && (
