@@ -1,0 +1,144 @@
+name: ChatGPT-style side panel
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/sidepanel.yml']
+  workflow_dispatch:
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - name: Apply patch
+        run: |
+          cat > /tmp/patch.py << 'PYEOF'
+          import sys, os
+
+          NEW_APP_LAYOUT = '''import { Outlet, useLocation } from 'react-router-dom';
+          import Sidebar from './Sidebar';
+          import { useUIStore } from '../lib/stores';
+
+          export default function AppLayout() {
+            const { sidebarOpen, toggleSidebar } = useUIStore();
+            const { pathname } = useLocation();
+            const showFloating = !sidebarOpen && !pathname.startsWith('/chat');
+            return (
+              <div className="flex h-screen overflow-hidden">
+                <Sidebar />
+                <main className="relative flex-1 overflow-y-auto">
+                  {showFloating && (
+                    <button
+                      onClick={toggleSidebar}
+                      className="fixed left-3 top-3 z-50 inline-flex h-9 w-9 items-center justify-center rounded-lg border border-surface-200 bg-white/90 text-surface-600 shadow-soft backdrop-blur transition-colors hover:text-accent-600 dark:border-surface-700 dark:bg-surface-900/90 dark:text-surface-300"
+                      aria-label="Open sidebar"
+                      title="Open sidebar"
+                    >
+                      ☰
+                    </button>
+                  )}
+                  <Outlet />
+                </main>
+              </div>
+            );
+          }
+          '''
+
+          def sub_file(path, pairs, whole=None):
+              if whole is not None:
+                  open(path, "w", encoding="utf-8").write(whole)
+                  print("rewrote", path)
+                  return
+              s = open(path, encoding="utf-8").read()
+              for old, new in pairs:
+                  if old not in s:
+                      sys.exit("ANCHOR NOT FOUND in %s: %r" % (path, old[:70]))
+                  s = s.replace(old, new, 1)
+              open(path, "w", encoding="utf-8").write(s)
+              print("patched", path)
+
+          def apply_all(root):
+              # 1. Smart default: open on desktop, closed on mobile
+              sub_file(os.path.join(root, "src/lib/stores.ts"), [
+                  ("  sidebarOpen: true,",
+                   "  sidebarOpen: typeof window !== 'undefined' && window.innerWidth >= 768,"),
+              ])
+
+              # 2. AppLayout: floating hamburger on non-chat pages when closed
+              sub_file(os.path.join(root, "src/components/AppLayout.tsx"), [], whole=NEW_APP_LAYOUT)
+
+              # 3. Sidebar: header toggle (always visible), slide transition, drawer animation
+              sub_file(os.path.join(root, "src/components/Sidebar.tsx"), [
+                  ("  const { sidebarOpen, setSidebar } = useUIStore();",
+                   "  const { sidebarOpen, setSidebar, toggleSidebar } = useUIStore();"),
+                  ('''        <button onClick={() => setSidebar(false)} className="icon-btn md:hidden" aria-label="Collapse sidebar">
+                    ✕
+                  </button>''',
+                   '''        <button onClick={toggleSidebar} className="icon-btn" aria-label="Toggle sidebar" title="Toggle sidebar">
+                    ☰
+                  </button>'''),
+                  ("<aside className={`hidden shrink-0 md:block ${sidebarOpen ? '' : 'w-0 overflow-hidden'}`}>{content}</aside>",
+                   "<aside className={`hidden shrink-0 overflow-hidden transition-all duration-200 md:block ${sidebarOpen ? 'w-[264px]' : 'w-0'}`}>{content}</aside>"),
+                  ('<div className="absolute left-0 top-0 h-full animate-fade-up">{content}</div>',
+                   '<div className="absolute left-0 top-0 h-full animate-slide-in">{content}</div>'),
+              ])
+
+              # 4. NavLink: auto-close drawer on mobile navigation
+              sub_file(os.path.join(root, "src/components/Sidebar.tsx"), [
+                  ("""  const { pathname } = useLocation();
+            const active = pathname === to;
+            return (
+              <Link
+                to={to}""",
+                   """  const { pathname } = useLocation();
+            const { setSidebar } = useUIStore();
+            const active = pathname === to;
+            return (
+              <Link
+                to={to}
+                onClick={() => { if (window.innerWidth < 768) setSidebar(false); }}"""),
+              ])
+
+              # 5. Chat: hamburger always visible (toggle, not just open-on-mobile)
+              sub_file(os.path.join(root, "src/routes/Chat.tsx"), [
+                  ("  const { setSidebar } = useUIStore();",
+                   "  const { toggleSidebar } = useUIStore();"),
+                  ('<button onClick={() => setSidebar(true)} className="icon-btn md:hidden" aria-label="Open sidebar">☰</button>',
+                   '<button onClick={toggleSidebar} className="icon-btn" aria-label="Toggle sidebar" title="Toggle sidebar">☰</button>'),
+              ])
+
+              # 6. CSS: drawer slide-in animation
+              sub_file(os.path.join(root, "src/index.css"), [
+                  (""".animate-fade-up {
+            animation: fade-up 0.2s ease-out both;
+          }""",
+                   """.animate-fade-up {
+            animation: fade-up 0.2s ease-out both;
+          }
+          @keyframes slide-in-left {
+            from { transform: translateX(-100%); }
+            to { transform: translateX(0); }
+          }
+          .animate-slide-in {
+            animation: slide-in-left 0.18s ease-out both;
+          }"""),
+              ])
+
+          if __name__ == "__main__":
+              apply_all(sys.argv[1])
+              print("side panel patched OK")
+
+          PYEOF
+          python3 /tmp/patch.py .
+      - name: Typecheck
+        run: |
+          npm install --no-audit --no-fund
+          npx tsc --noEmit -p tsconfig.json
+      - name: Commit changes
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add -A
+          if git diff --cached --quiet; then echo "no changes"; else git commit -m "ChatGPT-style side panel: hamburger toggle, slide animation, smart mobile drawer" && git push; fi
