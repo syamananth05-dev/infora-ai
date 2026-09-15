@@ -17,15 +17,26 @@ interface ConnectorPreset {
   blurb: string;
   fields: { key: string; label: string; placeholder: string; optional?: boolean }[];
   help: string;
+  defaults?: Record<string, string>;
 }
 
 const PRESETS: ConnectorPreset[] = [
   { name: 'Notion', type: 'notion', icon: '📓', blurb: 'Search and update your team Notion workspace.', fields: [{ key: 'token', label: 'Integration token', placeholder: 'secret_…' }], help: 'Notion → your workspace → Settings → Connections → copy the internal integration token. Then share the pages you want Infora to see with that integration.' },
-  { name: 'n8n', type: 'n8n', icon: '⚙️', blurb: 'Trigger your n8n workflows from chat.', fields: [{ key: 'webhook_url', label: 'Webhook URL', placeholder: 'https://…/webhook/…' }], help: 'n8n → open your workflow → Webhook node → copy the Production URL.' },
+  { name: 'Google Workspace', type: 'google', icon: '✉️', blurb: 'Gmail, Calendar, Drive and Sheets.', fields: [{ key: 'access_token', label: 'Google access token', placeholder: 'ya29.…' }], help: 'Paste a Google OAuth access token. Full one-click Google sign-in arrives in the next update.' },
   { name: 'Slack', type: 'slack', icon: '💬', blurb: 'Post messages to a Slack channel from chat.', fields: [{ key: 'webhook_url', label: 'Incoming webhook URL', placeholder: 'https://hooks.slack.com/…' }], help: 'Slack → channel → Integrations → Incoming Webhooks → create one for the channel.' },
   { name: 'Telegram', type: 'telegram', icon: '✈️', blurb: 'Send Telegram messages via your bot.', fields: [{ key: 'bot_token', label: 'Bot token', placeholder: '123456:ABC…' }, { key: 'chat_id', label: 'Chat ID', placeholder: 'e.g. 98765432' }], help: 'Message @BotFather on Telegram → /newbot → copy the token. Chat ID: message @userinfobot to get yours.' },
   { name: 'Zoho', type: 'zoho', icon: '🏢', blurb: 'Query your Zoho CRM / Books data.', fields: [{ key: 'token', label: 'OAuth token', placeholder: '1000.xxxx…' }, { key: 'base_url', label: 'API base URL (optional)', placeholder: 'https://www.zohoapis.com', optional: true }], help: 'Zoho API Console → generate an OAuth token with the scopes you need (e.g. ZohoCRM.modules.READ).' },
-  { name: 'Gmail', type: 'google', icon: '✉️', blurb: 'Read and send Gmail / Google Workspace mail.', fields: [{ key: 'access_token', label: 'Google access token', placeholder: 'ya29.…' }], help: 'Paste a Google OAuth access token. Full one-click Google sign-in arrives in the next update.' },
+  { name: 'GitHub', type: 'api', icon: '🐙', blurb: 'Read repos, issues and PRs; create issues from chat.', defaults: { base_url: 'https://api.github.com', auth_style: 'bearer' }, fields: [{ key: 'token', label: 'Personal access token', placeholder: 'ghp_… or github_pat_…' }], help: 'GitHub → Settings → Developer settings → Personal access tokens → Generate new token (fine-grained recommended, only the repos it needs).' },
+  { name: 'Jira', type: 'api', icon: '🧭', blurb: 'Search and manage Jira issues.', defaults: { auth_style: 'basic' }, fields: [{ key: 'base_url', label: 'Your site URL', placeholder: 'https://yoursite.atlassian.net' }, { key: 'username', label: 'Your Atlassian email', placeholder: 'you@team.com' }, { key: 'token', label: 'API token', placeholder: 'ATATT…' }], help: 'id.atlassian.com → Security → Create API token.' },
+  { name: 'Linear', type: 'api', icon: '📐', blurb: 'Query and manage Linear issues (GraphQL).', defaults: { base_url: 'https://api.linear.app/graphql', auth_style: 'bearer' }, fields: [{ key: 'token', label: 'API key', placeholder: 'lin_api_…' }], help: 'Linear → Settings → Security & access → Personal API keys.' },
+  { name: 'Airtable', type: 'api', icon: '🗂️', blurb: 'Read and update Airtable bases.', defaults: { base_url: 'https://api.airtable.com/v0', auth_style: 'bearer' }, fields: [{ key: 'token', label: 'Personal access token', placeholder: 'pat…' }], help: 'airtable.com → Account → Developer hub → Personal access tokens.' },
+  { name: 'ClickUp', type: 'api', icon: '☑️', blurb: 'Manage ClickUp tasks and lists.', defaults: { base_url: 'https://api.clickup.com/api/v2', auth_style: 'plain' }, fields: [{ key: 'token', label: 'Personal API token', placeholder: 'pk_…' }], help: 'ClickUp → Settings → Apps → API token.' },
+  { name: 'Asana', type: 'api', icon: '✅', blurb: 'Read and update Asana tasks and projects.', defaults: { base_url: 'https://app.asana.com/api/1.0', auth_style: 'bearer' }, fields: [{ key: 'token', label: 'Personal access token', placeholder: '1/1234:abc…' }], help: 'asana.com → Developer console → Personal access token.' },
+  { name: 'Trello', type: 'api', icon: '📋', blurb: 'Read boards, cards and lists.', defaults: { base_url: 'https://api.trello.com/1', auth_style: 'query:token' }, fields: [{ key: 'key', label: 'API key', placeholder: 'from trello.com/power-ups/admin' }, { key: 'token', label: 'API token', placeholder: 'generated with the key' }], help: 'trello.com → Power-Ups admin → create a Power-Up (or use the API key page) → copy key, then generate a token with it.' },
+  { name: 'Stripe', type: 'api', icon: '💳', blurb: 'Check payments, customers and subscriptions.', defaults: { base_url: 'https://api.stripe.com/v1', auth_style: 'bearer' }, fields: [{ key: 'token', label: 'Secret key (test or live)', placeholder: 'sk_test_… / sk_live_…' }], help: 'stripe.com → Developers → API keys → Secret key. Use sk_test_ for safe testing.' },
+  { name: 'HubSpot', type: 'api', icon: '🧲', blurb: 'Query HubSpot contacts, deals and tickets.', defaults: { base_url: 'https://api.hubapi.com', auth_style: 'bearer' }, fields: [{ key: 'token', label: 'Private app token', placeholder: 'pat-eu1-…' }], help: 'HubSpot → Settings → Integrations → Private Apps → create one with the scopes you need.' },
+  { name: 'n8n', type: 'n8n', icon: '⚙️', blurb: 'Trigger your n8n workflows (500+ integrations) from chat.', fields: [{ key: 'webhook_url', label: 'Webhook URL', placeholder: 'https://…/webhook/…' }], help: 'n8n → open your workflow → Webhook node → copy the Production URL.' },
+  { name: 'MCP Server', type: 'mcp', icon: '🧩', blurb: 'Connect ANY MCP server — the same universal standard Claude uses. Infora auto-discovers its tools.', fields: [{ key: 'url', label: 'MCP server URL', placeholder: 'https://example.com/mcp' }, { key: 'token', label: 'Bearer token (optional)', placeholder: 'optional', optional: true }], help: 'Paste the URL of any MCP server (Streamable HTTP). Its tools become usable in Agent mode automatically.' },
   { name: 'Custom API', type: 'custom', icon: '🔌', blurb: 'Connect any REST API or webhook.', fields: [{ key: 'base_url', label: 'Base URL', placeholder: 'https://api.example.com' }, { key: 'token', label: 'API key / token (optional)', placeholder: 'your key', optional: true }, { key: 'token_name', label: 'Header name for the key (optional)', placeholder: 'X-API-Key', optional: true }], help: 'Works with almost any service that has an API. The agent handles the auth header automatically.' },
 ];
 
@@ -60,7 +71,7 @@ export default function Settings() {
   const connectedNames = new Set((connectors ?? []).map((c) => c.name));
 
   const saveConnector = async (preset: ConnectorPreset) => {
-    const config: Record<string, string> = {};
+    const config: Record<string, string> = { ...(preset.defaults || {}) };
     for (const f of preset.fields) {
       const v = (connVals[`${preset.name}:${f.key}`] || '').trim();
       if (!v && !f.optional) { setConnMsg(`Please fill in: ${f.label}`); return; }
@@ -257,7 +268,7 @@ export default function Settings() {
       {tab === 'Connectors' && (
         <div className="space-y-4">
           <p className="text-sm text-surface-500">
-            Connect an app once — then anyone on the team can use it from Agent mode by just asking. Keys are shared with the whole team.
+            Connect an app once — then anyone on the team can use it from Agent mode by just asking. Also supports MCP servers (the same standard Claude uses) — paste a URL and Infora learns its tools. Keys are shared with the whole team.
           </p>
           {connMsg && <p className="card p-3 text-sm">{connMsg}</p>}
           {PRESETS.map((p) => (
