@@ -1,0 +1,51 @@
+name: Rebrand to Infora AI
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/rebrand.yml']
+  workflow_dispatch:
+jobs:
+  rebrand:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - name: Apply rebrand replacements
+        run: |
+          python3 << 'PYEOF'
+          import sys
+
+          def sub(path, pairs):
+              with open(path, encoding='utf-8') as f:
+                  s = f.read()
+              for old, new in pairs:
+                  if old not in s:
+                      sys.exit('MISSING in %s: %r' % (path, old))
+                  s = s.replace(old, new)
+              with open(path, 'w', encoding='utf-8') as f:
+                  f.write(s)
+
+          brand = [('Synapse', 'Infora AI')]
+          sub('index.html', brand + [('synapse-theme', 'infora-theme')])
+          sub('src/components/Sidebar.tsx', brand)
+          sub('src/lib/stores.ts', [('synapse-theme', 'infora-theme')])
+          sub('src/lib/supabase.ts', [('project: synapse', 'project: infora-ai')])
+          sub('src/routes/Auth.tsx', brand)
+          sub('src/routes/Chat.tsx', brand)
+          sub('src/routes/Landing.tsx', brand)
+          sub('src/routes/Settings.tsx', [('synapse-export.json', 'infora-export.json')])
+          sub('package.json', [
+              ('"name": "synapse"', '"name": "infora-ai"'),
+              ('Synapse', 'Infora AI'),
+              ('(OpenRouter + Supabase + Netlify)', '(OpenRouter + Supabase + GitHub Pages)'),
+          ])
+          sub('vite.config.ts', [("base: '/synapse/'", "base: '/infora-ai/'")])
+          print('rebrand done')
+          PYEOF
+      - name: Commit changes
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add -A
+          if git diff --cached --quiet; then echo "no changes"; else git commit -m "Rebrand: Synapse -> Infora AI" && git push; fi
