@@ -5,7 +5,7 @@ import { supabase } from '../lib/supabase';
 import { useProjects } from '../hooks/useData';
 import { timeAgo } from '../lib/types';
 
-const COLORS = ['#3375ff', '#8b5cf6', '#10b981', '#f59e0b', '#ef4444', '#06b6d4'];
+const COLORS = ['#ff7a1a', '#8b5cf6', '#10b981', '#f59e0b', '#ef4444', '#06b6d4'];
 
 export default function Projects() {
   const { data: projects = [] } = useProjects();

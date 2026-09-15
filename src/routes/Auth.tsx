@@ -55,8 +55,8 @@ export default function Auth() {
         <div className="mb-6 text-center">
           <Link to="/" className="inline-flex items-center gap-2">
             <svg width="28" height="28" viewBox="0 0 32 32">
-              <circle cx="16" cy="16" r="13" fill="none" stroke="#3375ff" strokeWidth="3" />
-              <circle cx="16" cy="16" r="5" fill="#3375ff" />
+              <circle cx="16" cy="16" r="13" fill="none" stroke="#ff7a1a" strokeWidth="3" />
+              <circle cx="16" cy="16" r="5" fill="#ff7a1a" />
             </svg>
             <span className="text-xl font-semibold tracking-tight">Infora AI</span>
           </Link>

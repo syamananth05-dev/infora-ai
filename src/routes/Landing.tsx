@@ -26,8 +26,8 @@ export default function Landing() {
         <header className="flex items-center justify-between py-6">
           <div className="flex items-center gap-2.5">
             <svg width="26" height="26" viewBox="0 0 32 32">
-              <circle cx="16" cy="16" r="13" fill="none" stroke="#3375ff" strokeWidth="3" />
-              <circle cx="16" cy="16" r="5" fill="#3375ff" />
+              <circle cx="16" cy="16" r="13" fill="none" stroke="#ff7a1a" strokeWidth="3" />
+              <circle cx="16" cy="16" r="5" fill="#ff7a1a" />
             </svg>
             <span className="text-lg font-semibold tracking-tight">Infora AI</span>
           </div>

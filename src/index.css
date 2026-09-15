@@ -12,6 +12,14 @@
   .dark body {
     @apply bg-surface-950 text-surface-100;
   }
+  body {
+    background-image: radial-gradient(1100px 420px at 50% -8%, rgb(255 122 26 / 0.06), transparent 65%);
+    background-attachment: fixed;
+  }
+  .dark body {
+    background-image: radial-gradient(1100px 420px at 50% -8%, rgb(255 122 26 / 0.1), transparent 65%);
+    background-attachment: fixed;
+  }
   ::selection {
     @apply bg-accent-500/25;
   }
@@ -33,6 +41,7 @@
   }
   .btn-primary {
     @apply btn bg-accent-600 text-white hover:bg-accent-500;
+    box-shadow: 0 6px 20px -8px rgb(240 94 0 / 0.5);
   }
   .btn-ghost {
     @apply btn text-surface-600 hover:bg-surface-100 dark:text-surface-300 dark:hover:bg-surface-800;
@@ -81,7 +90,7 @@
   @apply rounded bg-surface-100 px-1.5 py-0.5 font-mono text-[13px] text-accent-700 dark:bg-surface-800 dark:text-accent-300;
 }
 .md-body pre {
-  @apply my-3 overflow-x-auto rounded-xl border border-surface-800 bg-[#0d1117] p-4 text-[13px] leading-6;
+  @apply my-3 overflow-x-auto rounded-xl border border-surface-800 bg-[#12100e] p-4 text-[13px] leading-6;
 }
 .md-body pre code {
   @apply bg-transparent p-0 font-mono text-surface-200;

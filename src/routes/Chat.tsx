@@ -492,8 +492,8 @@ function EmptyState() {
   return (
     <div className="flex flex-col items-center justify-center py-20 text-center">
       <svg width="48" height="48" viewBox="0 0 32 32" className="mb-4 opacity-80">
-        <circle cx="16" cy="16" r="13" fill="none" stroke="#3375ff" strokeWidth="2.5" />
-        <circle cx="16" cy="16" r="5" fill="#3375ff" />
+        <circle cx="16" cy="16" r="13" fill="none" stroke="#ff7a1a" strokeWidth="2.5" />
+        <circle cx="16" cy="16" r="5" fill="#ff7a1a" />
       </svg>
       <h2 className="text-xl font-semibold tracking-tight">How can I help you today?</h2>
       <p className="mt-2 max-w-sm text-sm text-surface-500">

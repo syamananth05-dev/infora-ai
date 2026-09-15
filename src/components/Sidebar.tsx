@@ -87,8 +87,8 @@ export default function Sidebar() {
       <div className="flex items-center justify-between px-3 py-3">
         <Link to="/dashboard" className="flex items-center gap-2">
           <svg width="22" height="22" viewBox="0 0 32 32" className="shrink-0">
-            <circle cx="16" cy="16" r="13" fill="none" stroke="#3375ff" strokeWidth="3" />
-            <circle cx="16" cy="16" r="5" fill="#3375ff" />
+            <circle cx="16" cy="16" r="13" fill="none" stroke="#ff7a1a" strokeWidth="3" />
+            <circle cx="16" cy="16" r="5" fill="#ff7a1a" />
           </svg>
           <span className="font-semibold tracking-tight">Infora AI</span>
         </Link>

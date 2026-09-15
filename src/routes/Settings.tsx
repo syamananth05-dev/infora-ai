@@ -250,7 +250,7 @@ export default function Settings() {
               step="0.1"
               value={curTemp}
               onChange={(e) => setTemperature(parseFloat(e.target.value))}
-              className="w-full accent-[#3375ff]"
+              className="w-full accent-[#ff7a1a]"
             />
             <div className="flex justify-between text-xs text-surface-400">
               <span>Precise</span>
