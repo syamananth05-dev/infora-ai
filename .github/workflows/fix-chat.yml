@@ -1,4 +1,4 @@
-name: Fix cosmetic file corruption
+name: Add agent mode UI to Chat page
 
 on:
   push:
@@ -14,12 +14,45 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Repair corrupted class names
+      - name: Patch Chat.tsx with agent mode
         run: |
-          sed -i 's/text-xh"/text-xl"/' src/routes/Landing.tsx
-          sed -i 's/w-340px]/w-[340px]/; s/max-h-;46vh]/max-h-[46vh]/' src/components/chat/ModelPicker.tsx
-          sed -i 's/text-m10px]/text-[10px]/' src/routes/Chat.tsx
-          git diff --stat
+          python3 << 'PYEOF'
+          p = 'src/routes/Chat.tsx'
+          s = open(p).read()
+
+          a = "  const [error, setError] = useState('');\n  const abortRef"
+          assert s.count(a) == 1, 'anchor1'
+          s = s.replace(a, "  const [error, setError] = useState('');\n  const [agentMode, setAgentMode] = useState(false);\n  const [toolStatus, setToolStatus] = useState<{ name: string; detail: string } | null>(null);\n  const abortRef", 1)
+
+          a = "      setError('');\n      const text ="
+          assert s.count(a) == 1, 'anchor2'
+          s = s.replace(a, "      setError('');\n      setToolStatus(null);\n      const text =", 1)
+
+          a = "        conversation_id: conversationId || undefined,"
+          assert s.count(a) == 1, 'anchor3'
+          s = s.replace(a, a + "\n        mode: agentMode ? 'agent' : 'chat',", 1)
+
+          a = "          onError: (msg) => {\n            setError(msg);\n            setStreamMsg(null);\n          },"
+          assert s.count(a) == 1, 'anchor4'
+          s = s.replace(a, a + "\n          onTool: (t) => {\n            if (t.phase === 'start') {\n              const detail = t.name === 'web_search' ? String((t.args as any)?.query ?? '') : String((t.args as any)?.url ?? '');\n              setToolStatus({ name: t.name, detail });\n            } else {\n              setToolStatus(null);\n            }\n          },", 1)
+
+          a = "      {/* Compose */}"
+          assert s.count(a) == 0
+          a = "      {/* Composer */}"
+          assert s.count(a) == 1, 'anchor5'
+          s = s.replace(a, "      {toolStatus && (\n        <div className=\"mx-auto max-w-3xl px-4 pb-1\">\n          <span className=\"inline-flex items-center gap-1.5 rounded-full bg-accent-500/10 px-3 py-1 text-xs text-accent-700 dark:text-accent-300\">\n            <span className=\"inline-block h-3 w-3 animate-spin rounded-full border-2 border-accent-400 border-t-transparent\" />\n            {toolStatus.name === 'web_search' ? `Searching: ${toolStatus.detail}` : `Reading: ${toolStatus.detail}`}\n          </span>\n        </div>\n      )}\n\n      {/* Composer */}", 1)
+
+          a = "            <label className=\"icon-btn shrink-0 cursor-pointer\" title=\"Attach\">"
+          assert s.count(a) == 1, 'anchor6'
+          s = s.replace(a, "            <button\n              onClick={() => setAgentMode((v) => !v)}\n              className={`btn-outline shrink-0 px-3 py-1.5 text-sm ${agentMode ? 'border-accent-500 text-accent-600 dark:text-accent-400' : ''}`}\n              title=\"Agent mode: AI can search the web and read pages to complete tasks\"\n            >\n              \u26a1 Agent\n            </button>\n" + a, 1)
+
+          a = "[input, streaming, model, fileMeta, images, path, conversationId, session, navigate, qc]"
+          assert s.count(a) == 1, 'anchor7'
+          s = s.replace(a, "[input, streaming, model, fileMeta, images, path, conversationId, agentMode, session, navigate, qc]", 1)
+
+          open(p, 'w').write(s)
+          print('Chat.tsx patched OK')
+          PYEOF
 
       - name: Typecheck before pushing
         run: |
@@ -31,4 +64,4 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add -A
-          git diff --staged --quiet && echo "nothing to fix" || (git commit -m "Fix corrupted CSS class names in Landing, ModelPicker, Chat" && git push)
+          git diff --staged --quiet && echo "nothing to change" || (git commit -m "Add agent mode UI: toggle, tool status, /agent endpoint routing" && git push)
