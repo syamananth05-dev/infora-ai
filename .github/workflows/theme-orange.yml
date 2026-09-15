@@ -1,0 +1,137 @@
+name: Orange aerospace theme
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/theme-orange.yml']
+  workflow_dispatch:
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - name: Apply patch
+        run: |
+          cat > /tmp/patch.py << 'PYEOF'
+          import sys, os
+
+          NEW_COLORS = """      colors: {
+                  surface: {
+                    50: '#faf9f7',
+                    100: '#f2f0eb',
+                    200: '#e4e1d9',
+                    300: '#cdc8bd',
+                    400: '#9a948a',
+                    500: '#6b665d',
+                    600: '#4d4941',
+                    700: '#36322b',
+                    800: '#242019',
+                    850: '#1b1815',
+                    900: '#151310',
+                    950: '#0d0b09',
+                  },
+                  accent: {
+                    50: '#fff7ed',
+                    100: '#ffedd5',
+                    200: '#fed7aa',
+                    300: '#fdba74',
+                    400: '#ff9a45',
+                    500: '#ff7a1a',
+                    600: '#f05e00',
+                    700: '#c24708',
+                    800: '#9a3412',
+                    900: '#7c2d12',
+                  },
+                },"""
+
+          OLD_COLORS = """      colors: {
+                  surface: {
+                    50: '#f8fafc',
+                    100: '#f1f5f9',
+                    200: '#e2e8f0',
+                    300: '#cbd5e1',
+                    400: '#94a3b8',
+                    500: '#64748b',
+                    600: '#475569',
+                    700: '#334155',
+                    800: '#1e293b',
+                    850: '#172033',
+                    900: '#0f172a',
+                    950: '#080d19',
+                  },
+                  accent: {
+                    50: '#eef5ff',
+                    100: '#d9e8ff',
+                    200: '#bcd7ff',
+                    300: '#8ebcff',
+                    400: '#5998ff',
+                    500: '#3375ff',
+                    600: '#1b57f5',
+                    700: '#1443e1',
+                    800: '#1739b6',
+                    900: '#19368f',
+                  },
+                },"""
+
+          GLOW_RULES = """  body {
+              background-image: radial-gradient(1100px 420px at 50% -8%, rgb(255 122 26 / 0.06), transparent 65%);
+              background-attachment: fixed;
+            }
+            .dark body {
+              background-image: radial-gradient(1100px 420px at 50% -8%, rgb(255 122 26 / 0.1), transparent 65%);
+              background-attachment: fixed;
+            }
+          """
+
+          def sub_file(path, pairs):
+              s = open(path, encoding="utf-8").read()
+              for old, new, count in pairs:
+                  if old not in s:
+                      sys.exit("ANCHOR NOT FOUND in %s: %r" % (path, old[:70]))
+                  s = s.replace(old, new)
+              open(path, "w", encoding="utf-8").write(s)
+              print("patched", path)
+
+          def apply_all(root):
+              # 1. tailwind config: new palettes
+              sub_file(os.path.join(root, "tailwind.config.js"), [(OLD_COLORS, NEW_COLORS, 1)])
+
+              # 2. every hardcoded brand blue -> launch orange
+              for f in ["src/components/Sidebar.tsx", "src/routes/Auth.tsx", "src/routes/Chat.tsx",
+                        "src/routes/Landing.tsx", "src/routes/Projects.tsx", "src/routes/Settings.tsx"]:
+                  sub_file(os.path.join(root, f), [("#3375ff", "#ff7a1a", None)])
+
+              # 3. index.html: favicon + theme-color (URL-encoded %23 form handled via bare hex)
+              sub_file(os.path.join(root, "index.html"), [
+                  ("3375ff", "ff7a1a", None),
+                  ('content="#0f172a"', 'content="#0d0b09"', 1),
+              ])
+
+              # 4. index.css: warm code bg, button glow, page glow
+              css = os.path.join(root, "src/index.css")
+              sub_file(css, [
+                  ("bg-[#0d1117]", "bg-[#12100e]", 1),
+                  (".btn-primary {\n    @apply btn bg-accent-600 text-white hover:bg-accent-500;\n  }",
+                   ".btn-primary {\n    @apply btn bg-accent-600 text-white hover:bg-accent-500;\n    box-shadow: 0 6px 20px -8px rgb(240 94 0 / 0.5);\n  }", 1),
+                  ("  .dark body {\n    @apply bg-surface-950 text-surface-100;\n  }\n",
+                   "  .dark body {\n    @apply bg-surface-950 text-surface-100;\n  }\n" + GLOW_RULES, 1),
+              ])
+
+          if __name__ == "__main__":
+              apply_all(sys.argv[1])
+              print("theme patched OK")
+
+          PYEOF
+          python3 /tmp/patch.py .
+      - name: Typecheck
+        run: |
+          npm install --no-audit --no-fund
+          npx tsc --noEmit -p tsconfig.json
+      - name: Commit changes
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add -A
+          if git diff --cached --quiet; then echo "no changes"; else git commit -m "Orange aerospace theme: launch-orange accent, space-charcoal dark, warm light" && git push; fi
