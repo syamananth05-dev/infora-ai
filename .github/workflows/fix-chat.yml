@@ -1,4 +1,4 @@
-name: Add agent mode UI to Chat page
+name: Convert to team workspace
 
 on:
   push:
@@ -14,44 +14,66 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Patch Chat.tsx with agent mode
+      - name: Patch Dashboard and Settings for team usage
         run: |
           python3 << 'PYEOF'
-          p = 'src/routes/Chat.tsx'
+          # --- Dashboard: switch to team usage RPC ---
+          p = 'src/routes/Dashboard.tsx'
           s = open(p).read()
-
-          a = "  const [error, setError] = useState('');\n  const abortRef"
-          assert s.count(a) == 1, 'anchor1'
-          s = s.replace(a, "  const [error, setError] = useState('');\n  const [agentMode, setAgentMode] = useState(false);\n  const [toolStatus, setToolStatus] = useState<{ name: string; detail: string } | null>(null);\n  const abortRef", 1)
-
-          a = "      setError('');\n      const text ="
-          assert s.count(a) == 1, 'anchor2'
-          s = s.replace(a, "      setError('');\n      setToolStatus(null);\n      const text =", 1)
-
-          a = "        conversation_id: conversationId || undefined,"
-          assert s.count(a) == 1, 'anchor3'
-          s = s.replace(a, a + "\n        mode: agentMode ? 'agent' : 'chat',", 1)
-
-          a = "          onError: (msg) => {\n            setError(msg);\n            setStreamMsg(null);\n          },"
-          assert s.count(a) == 1, 'anchor4'
-          s = s.replace(a, a + "\n          onTool: (t) => {\n            if (t.phase === 'start') {\n              const detail = t.name === 'web_search' ? String((t.args as any)?.query ?? '') : String((t.args as any)?.url ?? '');\n              setToolStatus({ name: t.name, detail });\n            } else {\n              setToolStatus(null);\n            }\n          },", 1)
-
-          a = "      {/* Compose */}"
-          assert s.count(a) == 0
-          a = "      {/* Composer */}"
-          assert s.count(a) == 1, 'anchor5'
-          s = s.replace(a, "      {toolStatus && (\n        <div className=\"mx-auto max-w-3xl px-4 pb-1\">\n          <span className=\"inline-flex items-center gap-1.5 rounded-full bg-accent-500/10 px-3 py-1 text-xs text-accent-700 dark:text-accent-300\">\n            <span className=\"inline-block h-3 w-3 animate-spin rounded-full border-2 border-accent-400 border-t-transparent\" />\n            {toolStatus.name === 'web_search' ? `Searching: ${toolStatus.detail}` : `Reading: ${toolStatus.detail}`}\n          </span>\n        </div>\n      )}\n\n      {/* Composer */}", 1)
-
-          a = "            <label className=\"icon-btn shrink-0 cursor-pointer\" title=\"Attach\">"
-          assert s.count(a) == 1, 'anchor6'
-          s = s.replace(a, "            <button\n              onClick={() => setAgentMode((v) => !v)}\n              className={`btn-outline shrink-0 px-3 py-1.5 text-sm ${agentMode ? 'border-accent-500 text-accent-600 dark:text-accent-400' : ''}`}\n              title=\"Agent mode: AI can search the web and read pages to complete tasks\"\n            >\n              \u26a1 Agent\n            </button>\n" + a, 1)
-
-          a = "[input, streaming, model, fileMeta, images, path, conversationId, session, navigate, qc]"
-          assert s.count(a) == 1, 'anchor7'
-          s = s.replace(a, "[input, streaming, model, fileMeta, images, path, conversationId, agentMode, session, navigate, qc]", 1)
-
+          a = "supabase.rpc('get_my_usage_totals')"
+          assert s.count(a) == 1, 'dash-anchor1'
+          s = s.replace(a, "supabase.rpc('get_team_usage_totals')", 1)
+          a2 = "        requests_24h: number;\n        cost_30d: number;\n      };"
+          assert s.count(a2) == 1, 'dash-anchor2'
+          s = s.replace(a2, "        requests_24h: number;\n        cost_24h: number;\n        active_users: number;\n      };", 1)
+          a3 = 'label="Requests (24h)"'
+          assert s.count(a3) == 1, 'dash-anchor3'
+          s = s.replace(a3, 'label="Team requests (24h)"', 1)
+          a4 = 'label="Est. spend"'
+          assert s.count(a4) == 1, 'dash-anchor4'
+          s = s.replace(a4, 'label="Team est. spend"', 1)
+          a5 = '<Stat label="Team est. spend" value={formatCost(usage.total_cost)} />'
+          assert s.count(a5) == 1, 'dash-anchor5'
+          s = s.replace(a5, a5 + '\n          <Stat label="Active members" value={String(usage.active_users ?? 0)} />', 1)
+          a6 = "Here's what's happening in your workspace."
+          assert s.count(a6) == 1, 'dash-anchor6'
+          s = s.replace(a6, "Your team's shared AI workspace.", 1)
+          a7 = "grid grid-cols-2 gap-3 sm:grid-cols-4"
+          if s.count(a7) >= 1:
+            s = s.replace(a7, "grid grid-cols-2 gap-3 sm:grid-cols-5", 1)
           open(p, 'w').write(s)
-          print('Chat.tsx patched OK')
+          print('Dashboard patched OK')
+
+          # --- Settings: switch to team usage RPC ---
+          p = 'src/routes/Settings.tsx'
+          s = open(p).read()
+          a = "supabase.rpc('get_my_usage')"
+          assert s.count(a) == 1, 'set-anchor1'
+          s = s.replace(a, "supabase.rpc('get_team_usage')", 1)
+          a2 = "supabase.rpc('get_my_usage_totals')"
+          assert s.count(a2) == 1, 'set-anchor2'
+          s = s.replace(a2, "supabase.rpc('get_team_usage_totals')", 1)
+          open(p, 'w').write(s)
+          print('Settings patched OK')
+
+          # --- Auth: update text for team workspace ---
+          p = 'src/routes/Auth.tsx'
+          s = open(p).read()
+          a = "One account for your personal AI platform."
+          assert s.count(a) == 1, 'auth-anchor1'
+          s = s.replace(a, "Join your team's shared AI workspace.", 1)
+          open(p, 'w').write(s)
+          print('Auth patched OK')
+
+          # --- Landing: update description ---
+          p = 'src/routes/Landing.tsx'
+          s = open(p).read()
+          if 'personal' in s.lower():
+            print('Landing has personal text - updating...')
+            s = s.replace('Your personal AI workspace', 'Your team\u2019s AI workspace')
+            s = s.replace('your personal', 'your team\u2019s')
+          open(p, 'w').write(s)
+          print('Landing patched OK')
           PYEOF
 
       - name: Typecheck before pushing
@@ -64,4 +86,4 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add -A
-          git diff --staged --quiet && echo "nothing to change" || (git commit -m "Add agent mode UI: toggle, tool status, /agent endpoint routing" && git push)
+          git diff --staged --quiet && echo "nothing to change" || (git commit -m "Convert to team workspace: shared usage stats, team welcome text, auto-confirm signup" && git push)
