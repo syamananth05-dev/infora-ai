@@ -1,0 +1,36 @@
+name: Fix Chat.tsx continuation bug
+
+on:
+  push:
+    paths: ['.github/workflows/fix-chat.yml']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Restore clean Chat.tsx from history and apply fix
+        run: |
+          git show 3bd031f547220ce24e67c79b097bf8df9939eb02:src/routes/Chat.tsx > src/routes/Chat.tsx
+          sed -i 's|const payload: Parameters<typeof streamChat>\[0\] = {|&\n        conversation_id: conversationId \|\| undefined,|' src/routes/Chat.tsx
+          grep -c 'conversation_id: conversationId' src/routes/Chat.tsx
+
+      - name: Typecheck before pushing
+        run: |
+          npm install --no-audit --no-fund
+          npx tsc --noEmit -p tsconfig.json
+
+      - name: Commit and push
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add src/routes/Chat.tsx
+          git commit -m "Fix: pass conversation_id so chats continue instead of creating new ones"
+          git push
