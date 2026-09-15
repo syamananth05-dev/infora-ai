@@ -1,4 +1,4 @@
-name: Fix Chat.tsx continuation bug
+name: Fix cosmetic file corruption
 
 on:
   push:
@@ -13,14 +13,13 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
 
-      - name: Restore clean Chat.tsx from history and apply fix
+      - name: Repair corrupted class names
         run: |
-          git show 3bd031f547220ce24e67c79b097bf8df9939eb02:src/routes/Chat.tsx > src/routes/Chat.tsx
-          sed -i 's|const payload: Parameters<typeof streamChat>\[0\] = {|&\n        conversation_id: conversationId \|\| undefined,|' src/routes/Chat.tsx
-          grep -c 'conversation_id: conversationId' src/routes/Chat.tsx
+          sed -i 's/text-xh"/text-xl"/' src/routes/Landing.tsx
+          sed -i 's/w-340px]/w-[340px]/; s/max-h-;46vh]/max-h-[46vh]/' src/components/chat/ModelPicker.tsx
+          sed -i 's/text-m10px]/text-[10px]/' src/routes/Chat.tsx
+          git diff --stat
 
       - name: Typecheck before pushing
         run: |
@@ -31,6 +30,5 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add src/routes/Chat.tsx
-          git commit -m "Fix: pass conversation_id so chats continue instead of creating new ones"
-          git push
+          git add -A
+          git diff --staged --quiet && echo "nothing to fix" || (git commit -m "Fix corrupted CSS class names in Landing, ModelPicker, Chat" && git push)
