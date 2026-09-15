@@ -30,6 +30,8 @@ export default function Chat() {
   const [fileMeta, setFileMeta] = useState<{ name: string; mime: string; size: number; path?: string }[]>([]);
   const [streaming, setStreaming] = useState(false);
   const [error, setError] = useState('');
+  const [agentMode, setAgentMode] = useState(false);
+  const [toolStatus, setToolStatus] = useState<{ name: string; detail: string } | null>(null);
   const abortRef = useRef<AbortController | null>(null);
 
   // ---- Load conversation + messages ----
@@ -122,6 +124,7 @@ export default function Chat() {
   const send = useCallback(
     async (opts?: { content?: string; parentId?: string | null }) => {
       setError('');
+      setToolStatus(null);
       const text = (opts?.content ?? input).trim();
       if (!text) return;
       if (streaming) return;
@@ -131,6 +134,7 @@ export default function Chat() {
 
       const payload: Parameters<typeof streamChat>[0] = {
         conversation_id: conversationId || undefined,
+        mode: agentMode ? 'agent' : 'chat',
         model,
         content: text,
         parent_message_id: parentId,
@@ -195,6 +199,14 @@ export default function Chat() {
             setError(msg);
             setStreamMsg(null);
           },
+          onTool: (t) => {
+            if (t.phase === 'start') {
+              const detail = t.name === 'web_search' ? String((t.args as any)?.query ?? '') : String((t.args as any)?.url ?? '');
+              setToolStatus({ name: t.name, detail });
+            } else {
+              setToolStatus(null);
+            }
+          },
           onDone: () => {
             setStreamMsg(null);
             qc.invalidateQueries({ queryKey: ['messages', conversationId] });
@@ -211,7 +223,7 @@ export default function Chat() {
         abortRef.current = null;
       }
     },
-    [input, streaming, model, fileMeta, images, path, conversationId, session, navigate, qc]
+    [input, streaming, model, fileMeta, images, path, conversationId, agentMode, session, navigate, qc]
   );
 
   const stop = () => {
@@ -341,6 +353,15 @@ export default function Chat() {
         </div>
       </div>
 
+      {toolStatus && (
+        <div className="mx-auto max-w-3xl px-4 pb-1">
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-accent-500/10 px-3 py-1 text-xs text-accent-700 dark:text-accent-300">
+            <span className="inline-block h-3 w-3 animate-spin rounded-full border-2 border-accent-400 border-t-transparent" />
+            {toolStatus.name === 'web_search' ? `Searching: ${toolStatus.detail}` : `Reading: ${toolStatus.detail}`}
+          </span>
+        </div>
+      )}
+
       {/* Composer */}
       <div className="border-t border-surface-200 bg-surface-50 px-4 py-3 dark:border-surface-800 dark:bg-surface-900">
         <div className="mx-auto max-w-3xl">
@@ -371,6 +392,13 @@ export default function Chat() {
             </div>
           )}
           <div className="flex items-end gap-2 rounded-xl border border-surface-200 bg-white px-3 py-2 shadow-soft dark:border-surface-700 dark:bg-surface-950">
+            <button
+              onClick={() => setAgentMode((v) => !v)}
+              className={`btn-outline shrink-0 px-3 py-1.5 text-sm ${agentMode ? 'border-accent-500 text-accent-600 dark:text-accent-400' : ''}`}
+              title="Agent mode: AI can search the web and read pages to complete tasks"
+            >
+              ⚡ Agent
+            </button>
             <label className="icon-btn shrink-0 cursor-pointer" title="Attach">
               📎
               <input
