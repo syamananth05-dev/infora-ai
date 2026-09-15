@@ -34,10 +34,12 @@ function groupByDate(items: Conversation[]) {
 
 const NavLink = ({ to, label, icon }: { to: string; label: string; icon: string }) => {
   const { pathname } = useLocation();
+  const { setSidebar } = useUIStore();
   const active = pathname === to;
   return (
     <Link
       to={to}
+      onClick={() => { if (window.innerWidth < 768) setSidebar(false); }}
       className={`flex items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-sm transition-colors ${
         active
           ? 'bg-accent-600/10 font-medium text-accent-700 dark:text-accent-300'
@@ -51,7 +53,7 @@ const NavLink = ({ to, label, icon }: { to: string; label: string; icon: string 
 };
 
 export default function Sidebar() {
-  const { sidebarOpen, setSidebar } = useUIStore();
+  const { sidebarOpen, setSidebar, toggleSidebar } = useUIStore();
   const { theme, toggle } = useThemeStore();
   const [search, setSearch] = useState('');
   const navigate = useNavigate();
@@ -92,8 +94,8 @@ export default function Sidebar() {
           </svg>
           <span className="font-semibold tracking-tight">Infora AI</span>
         </Link>
-        <button onClick={() => setSidebar(false)} className="icon-btn md:hidden" aria-label="Collapse sidebar">
-          ✕
+        <button onClick={toggleSidebar} className="icon-btn" aria-label="Toggle sidebar" title="Toggle sidebar">
+          ☰
         </button>
       </div>
 
@@ -181,13 +183,13 @@ export default function Sidebar() {
   return (
     <>
       {/* Desktop */}
-      <aside className={`hidden shrink-0 md:block ${sidebarOpen ? '' : 'w-0 overflow-hidden'}`}>{content}</aside>
+      <aside className={`hidden shrink-0 overflow-hidden transition-all duration-200 md:block ${sidebarOpen ? 'w-[264px]' : 'w-0'}`}>{content}</aside>
 
       {/* Mobile drawer */}
       {sidebarOpen && (
         <div className="fixed inset-0 z-40 md:hidden">
           <div className="absolute inset-0 bg-black/40" onClick={() => setSidebar(false)} />
-          <div className="absolute left-0 top-0 h-full animate-fade-up">{content}</div>
+          <div className="absolute left-0 top-0 h-full animate-slide-in">{content}</div>
         </div>
       )}
     </>

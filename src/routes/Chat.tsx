@@ -17,7 +17,7 @@ export default function Chat() {
   const { conversationId } = useParams();
   const navigate = useNavigate();
   const qc = useQueryClient();
-  const { setSidebar } = useUIStore();
+  const { toggleSidebar } = useUIStore();
   const { data: modelsData } = useModels();
   const { session } = useSession();
 
@@ -337,7 +337,7 @@ export default function Chat() {
     <div className="flex h-full flex-col">
       {/* Top bar */}
       <header className="flex items-center gap-2 border-b border-surface-200 px-3 py-2 dark:border-surface-800">
-        <button onClick={() => setSidebar(true)} className="icon-btn md:hidden" aria-label="Open sidebar">☰</button>
+        <button onClick={toggleSidebar} className="icon-btn" aria-label="Toggle sidebar" title="Toggle sidebar">☰</button>
         <button onClick={rename} className="min-w-0 flex-1 truncate text-left text-sm font-medium hover:text-accent-600" title="Rename">
           {conv?.title || 'New conversation'}
         </button>
