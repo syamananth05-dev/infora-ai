@@ -34,6 +34,39 @@ export default function Chat() {
   const [toolStatus, setToolStatus] = useState<{ name: string; detail: string } | null>(null);
   const abortRef = useRef<AbortController | null>(null);
 
+  const [listening, setListening] = useState(false);
+  const recRef = useRef<any>(null);
+  const speechSupported =
+    typeof window !== "undefined" &&
+    !!((window as any).SpeechRecognition || (window as any).webkitSpeechRecognition);
+
+  const toggleMic = () => {
+    const SR: any = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    if (!SR) return;
+    if (listening) {
+      try { recRef.current?.stop(); } catch {}
+      return;
+    }
+    const rec = new SR();
+    rec.lang = "en-IN";
+    rec.interimResults = true;
+    rec.continuous = false;
+    let finalText = "";
+    rec.onresult = (e: any) => {
+      let interim = "";
+      for (let i = e.resultIndex; i < e.results.length; i++) {
+        if (e.results[i].isFinal) finalText += e.results[i][0].transcript;
+        else interim += e.results[i][0].transcript;
+      }
+      setInput((finalText + interim).replace(/\s+/g, " ").trimStart());
+    };
+    rec.onend = () => setListening(false);
+    rec.onerror = () => setListening(false);
+    recRef.current = rec;
+    setListening(true);
+    try { rec.start(); } catch { setListening(false); }
+  };
+
   // ---- Load conversation + messages ----
   const { data: conv } = useQuery({
     queryKey: ['conversation', conversationId],
@@ -399,6 +432,15 @@ export default function Chat() {
             >
               ⚡ Agent
             </button>
+            {speechSupported && (
+    <button
+      onClick={toggleMic}
+      className={`btn-outline shrink-0 px-3 py-1.5 text-sm ${listening ? "border-red-400 text-red-500 animate-pulse" : ""}`}
+      title={listening ? "Stop voice input" : "Speak (voice input)"}
+    >
+      {listening ? "◉ Listening…" : "🎤"}
+    </button>
+  )}
             <label className="icon-btn shrink-0 cursor-pointer" title="Attach">
               📎
               <input

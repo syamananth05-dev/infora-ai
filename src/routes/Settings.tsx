@@ -8,7 +8,27 @@ import { downloadFile } from '../lib/api';
 import { formatCost, formatTokens } from '../lib/types';
 import type { UsageRow } from '../lib/types';
 
-const TABS = ['Account', 'AI defaults', 'Usage', 'Data'] as const;
+const TABS = ['Account', 'AI defaults', 'Connectors', 'Usage', 'Data'] as const;
+
+interface ConnectorPreset {
+  name: string;
+  type: string;
+  icon: string;
+  blurb: string;
+  fields: { key: string; label: string; placeholder: string; optional?: boolean }[];
+  help: string;
+}
+
+const PRESETS: ConnectorPreset[] = [
+  { name: 'Notion', type: 'notion', icon: '📓', blurb: 'Search and update your team Notion workspace.', fields: [{ key: 'token', label: 'Integration token', placeholder: 'secret_…' }], help: 'Notion → your workspace → Settings → Connections → copy the internal integration token. Then share the pages you want Infora to see with that integration.' },
+  { name: 'n8n', type: 'n8n', icon: '⚙️', blurb: 'Trigger your n8n workflows from chat.', fields: [{ key: 'webhook_url', label: 'Webhook URL', placeholder: 'https://…/webhook/…' }], help: 'n8n → open your workflow → Webhook node → copy the Production URL.' },
+  { name: 'Slack', type: 'slack', icon: '💬', blurb: 'Post messages to a Slack channel from chat.', fields: [{ key: 'webhook_url', label: 'Incoming webhook URL', placeholder: 'https://hooks.slack.com/…' }], help: 'Slack → channel → Integrations → Incoming Webhooks → create one for the channel.' },
+  { name: 'Telegram', type: 'telegram', icon: '✈️', blurb: 'Send Telegram messages via your bot.', fields: [{ key: 'bot_token', label: 'Bot token', placeholder: '123456:ABC…' }, { key: 'chat_id', label: 'Chat ID', placeholder: 'e.g. 98765432' }], help: 'Message @BotFather on Telegram → /newbot → copy the token. Chat ID: message @userinfobot to get yours.' },
+  { name: 'Zoho', type: 'zoho', icon: '🏢', blurb: 'Query your Zoho CRM / Books data.', fields: [{ key: 'token', label: 'OAuth token', placeholder: '1000.xxxx…' }, { key: 'base_url', label: 'API base URL (optional)', placeholder: 'https://www.zohoapis.com', optional: true }], help: 'Zoho API Console → generate an OAuth token with the scopes you need (e.g. ZohoCRM.modules.READ).' },
+  { name: 'Gmail', type: 'google', icon: '✉️', blurb: 'Read and send Gmail / Google Workspace mail.', fields: [{ key: 'access_token', label: 'Google access token', placeholder: 'ya29.…' }], help: 'Paste a Google OAuth access token. Full one-click Google sign-in arrives in the next update.' },
+  { name: 'Custom API', type: 'custom', icon: '🔌', blurb: 'Connect any REST API or webhook.', fields: [{ key: 'base_url', label: 'Base URL', placeholder: 'https://api.example.com' }, { key: 'token', label: 'API key / token (optional)', placeholder: 'your key', optional: true }, { key: 'token_name', label: 'Header name for the key (optional)', placeholder: 'X-API-Key', optional: true }], help: 'Works with almost any service that has an API. The agent handles the auth header automatically.' },
+];
+
 type Tab = (typeof TABS)[number];
 
 export default function Settings() {
@@ -25,6 +45,42 @@ export default function Settings() {
   const [defaultModel, setDefaultModel] = useState<string | null>(null);
   const [temperature, setTemperature] = useState<number | null>(null);
   const [exporting, setExporting] = useState(false);
+  const [openConn, setOpenConn] = useState<string | null>(null);
+  const [connVals, setConnVals] = useState<Record<string, string>>({});
+  const [connMsg, setConnMsg] = useState('');
+
+  const { data: connectors } = useQuery({
+    queryKey: ['integrations'],
+    queryFn: async () => {
+      const { data, error } = await supabase.from('integrations').select('name,type,updated_at');
+      if (error) throw error;
+      return data as { name: string; type: string; updated_at: string }[];
+    },
+  });
+  const connectedNames = new Set((connectors ?? []).map((c) => c.name));
+
+  const saveConnector = async (preset: ConnectorPreset) => {
+    const config: Record<string, string> = {};
+    for (const f of preset.fields) {
+      const v = (connVals[`${preset.name}:${f.key}`] || '').trim();
+      if (!v && !f.optional) { setConnMsg(`Please fill in: ${f.label}`); return; }
+      if (v) config[f.key] = v;
+    }
+    const { error } = await supabase.from('integrations').upsert(
+      { name: preset.name, type: preset.type, config, created_by: session!.user.id },
+      { onConflict: 'name' }
+    );
+    if (error) { setConnMsg(`Could not save: ${error.message}`); return; }
+    setConnMsg(`${preset.name} connected! Try it in Agent mode - just ask.`);
+    setOpenConn(null);
+    setConnVals({});
+    qc.invalidateQueries({ queryKey: ['integrations'] });
+  };
+
+  const disconnectConnector = async (name: string) => {
+    await supabase.from('integrations').delete().eq('name', name);
+    qc.invalidateQueries({ queryKey: ['integrations'] });
+  };
 
   const prefs = profile?.preferences ?? {};
   const displayName = name ?? profile?.display_name ?? '';
@@ -195,6 +251,60 @@ export default function Settings() {
           <p className="text-xs text-surface-400">
             Bring-your-own-key, memory controls, and research preferences arrive in later phases.
           </p>
+        </div>
+      )}
+
+      {tab === 'Connectors' && (
+        <div className="space-y-4">
+          <p className="text-sm text-surface-500">
+            Connect an app once — then anyone on the team can use it from Agent mode by just asking. Keys are shared with the whole team.
+          </p>
+          {connMsg && <p className="card p-3 text-sm">{connMsg}</p>}
+          {PRESETS.map((p) => (
+            <div key={p.name} className="card p-4">
+              <div className="flex items-center gap-3">
+                <span className="text-2xl">{p.icon}</span>
+                <div className="flex-1">
+                  <h3 className="font-medium">{p.name}</h3>
+                  <p className="text-xs text-surface-400">{p.blurb}</p>
+                </div>
+                {connectedNames.has(p.name) ? (
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-medium text-emerald-600 dark:text-emerald-400">✓ Connected</span>
+                    <button onClick={() => disconnectConnector(p.name)} className="btn-ghost px-2 py-1 text-xs" title="Disconnect">✕</button>
+                  </div>
+                ) : (
+                  <button
+                    onClick={() => { setOpenConn(openConn === p.name ? null : p.name); setConnMsg(''); }}
+                    className="btn-outline px-3 py-1.5 text-sm"
+                  >
+                    {openConn === p.name ? 'Close' : 'Connect'}
+                  </button>
+                )}
+              </div>
+              {openConn === p.name && (
+                <div className="mt-3 space-y-3 border-t border-surface-100 pt-3 dark:border-surface-800">
+                  {p.fields.map((f) => (
+                    <div key={f.key}>
+                      <label className="mb-1 block text-sm font-medium">
+                        {f.label}
+                        {!f.optional && <span className="text-red-500"> *</span>}
+                      </label>
+                      <input
+                        className="input"
+                        type={f.key.includes('token') || f.key === 'webhook_url' ? 'password' : 'text'}
+                        placeholder={f.placeholder}
+                        value={connVals[`${p.name}:${f.key}`] || ''}
+                        onChange={(e) => setConnVals((prev) => ({ ...prev, [`${p.name}:${f.key}`]: e.target.value }))}
+                      />
+                    </div>
+                  ))}
+                  <p className="text-xs text-surface-400">{p.help}</p>
+                  <button onClick={() => saveConnector(p)} className="btn-primary">Save connection</button>
+                </div>
+              )}
+            </div>
+          ))}
         </div>
       )}
 
