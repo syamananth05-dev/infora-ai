@@ -1,4 +1,4 @@
-name: Convert to team workspace
+name: Convert to team workspace v2
 
 on:
   push:
@@ -14,7 +14,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Patch Dashboard and Settings for team usage
+      - name: Patch Dashboard, Settings, Auth for team usage
         run: |
           python3 << 'PYEOF'
           # --- Dashboard: switch to team usage RPC ---
@@ -56,12 +56,12 @@ jobs:
           open(p, 'w').write(s)
           print('Settings patched OK')
 
-          # --- Auth: update text for team workspace ---
+          # --- Auth: update text (no apostrophe to avoid JSX quote conflict) ---
           p = 'src/routes/Auth.tsx'
           s = open(p).read()
-          a = "One account for your personal AI platform."
+          a = "'One account for your personal AI platform.'"
           assert s.count(a) == 1, 'auth-anchor1'
-          s = s.replace(a, "Join your team's shared AI workspace.", 1)
+          s = s.replace(a, "'Create your account to join the team.'", 1)
           open(p, 'w').write(s)
           print('Auth patched OK')
 
@@ -70,8 +70,8 @@ jobs:
           s = open(p).read()
           if 'personal' in s.lower():
             print('Landing has personal text - updating...')
-            s = s.replace('Your personal AI workspace', 'Your team\u2019s AI workspace')
-            s = s.replace('your personal', 'your team\u2019s')
+            s = s.replace('Your personal AI workspace', 'Your team AI workspace')
+            s = s.replace('your personal', 'your team')
           open(p, 'w').write(s)
           print('Landing patched OK')
           PYEOF
@@ -86,4 +86,4 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add -A
-          git diff --staged --quiet && echo "nothing to change" || (git commit -m "Convert to team workspace: shared usage stats, team welcome text, auto-confirm signup" && git push)
+          git diff --staged --quiet && echo "nothing to change" || (git commit -m "Convert to team workspace: shared usage stats, team welcome, auto-confirm signup" && git push)
