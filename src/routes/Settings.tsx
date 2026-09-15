@@ -34,7 +34,7 @@ export default function Settings() {
   const { data: usage } = useQuery({
     queryKey: ['usage-by-model'],
     queryFn: async () => {
-      const { data, error } = await supabase.rpc('get_my_usage');
+      const { data, error } = await supabase.rpc('get_team_usage');
       if (error) throw error;
       return data as UsageRow[];
     },
@@ -43,7 +43,7 @@ export default function Settings() {
   const { data: totals } = useQuery({
     queryKey: ['usage-totals'],
     queryFn: async () => {
-      const { data, error } = await supabase.rpc('get_my_usage_totals');
+      const { data, error } = await supabase.rpc('get_team_usage_totals');
       if (error) throw error;
       return data as any;
     },

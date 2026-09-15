@@ -13,7 +13,7 @@ export default function Dashboard() {
   const { data: usage } = useQuery({
     queryKey: ['usage-totals'],
     queryFn: async () => {
-      const { data, error } = await supabase.rpc('get_my_usage_totals');
+      const { data, error } = await supabase.rpc('get_team_usage_totals');
       if (error) throw error;
       return data as {
         total_requests: number;
@@ -21,7 +21,8 @@ export default function Dashboard() {
         total_tokens_in: number;
         total_tokens_out: number;
         requests_24h: number;
-        cost_30d: number;
+        cost_24h: number;
+        active_users: number;
       };
     },
   });
@@ -32,7 +33,7 @@ export default function Dashboard() {
     <div className="mx-auto max-w-4xl p-6 sm:p-10">
       <header className="mb-8">
         <h1 className="text-2xl font-semibold tracking-tight">Welcome back, {name}</h1>
-        <p className="mt-1 text-sm text-surface-500">Here's what's happening in your workspace.</p>
+        <p className="mt-1 text-sm text-surface-500">Your team's shared AI workspace.</p>
       </header>
 
       {/* Quick actions */}
@@ -43,11 +44,12 @@ export default function Dashboard() {
 
       {/* Usage */}
       {usage && (
-        <div className="mb-8 grid grid-cols-2 gap-3 sm:grid-cols-4">
-          <Stat label="Requests (24h)" value={String(usage.requests_24h)} />
+        <div className="mb-8 grid grid-cols-2 gap-3 sm:grid-cols-5">
+          <Stat label="Team requests (24h)" value={String(usage.requests_24h)} />
           <Stat label="Tokens in" value={formatTokens(usage.total_tokens_in)} />
           <Stat label="Tokens out" value={formatTokens(usage.total_tokens_out)} />
-          <Stat label="Est. spend" value={formatCost(usage.total_cost)} />
+          <Stat label="Team est. spend" value={formatCost(usage.total_cost)} />
+          <Stat label="Active members" value={String(usage.active_users ?? 0)} />
         </div>
       )}
 

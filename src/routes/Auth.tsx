@@ -68,7 +68,7 @@ export default function Auth() {
           </h1>
           <p className="mt-1 text-sm text-surface-500">
             {mode === 'login' && 'Log in to continue to your AI workspace.'}
-            {mode === 'signup' && 'One account for your personal AI platform.'}
+            {mode === 'signup' && 'Create your account to join the team.'}
             {mode === 'forgot' && "We'll email you a reset link."}
           </p>
 
