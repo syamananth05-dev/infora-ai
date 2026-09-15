@@ -75,7 +75,7 @@ export default function Settings() {
         conversations: convRes.data ?? [],
         messages: msgRes.data ?? [],
       };
-      downloadFile('synapse-export.json', JSON.stringify(payload, null, 2));
+      downloadFile('infora-export.json', JSON.stringify(payload, null, 2));
     } finally {
       setExporting(false);
     }

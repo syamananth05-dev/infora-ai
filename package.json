@@ -1,9 +1,9 @@
 {
-  "name": "synapse",
+  "name": "infora-ai",
   "private": true,
   "version": "0.1.0",
   "type": "module",
-  "description": "Synapse — a personal AI intelligence platform (OpenRouter + Supabase + Netlify)",
+  "description": "Infora AI — a personal AI intelligence platform (OpenRouter + Supabase + GitHub Pages)",
   "scripts": {
     "dev": "vite",
     "build": "tsc --noEmit -p tsconfig.json && vite build",

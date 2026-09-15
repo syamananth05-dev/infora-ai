@@ -410,7 +410,7 @@ export default function Chat() {
             </label>
             <textarea
               className="max-h-40 min-h-[24px] flex-1 resize-none bg-transparent py-1 text-sm outline-none placeholder:text-surface-400"
-              placeholder="Message Synapse…  (Enter to send, Shift+Enter for newline)"
+              placeholder="Message Infora AI…  (Enter to send, Shift+Enter for newline)"
               rows={1}
               value={input}
               onChange={(e) => {

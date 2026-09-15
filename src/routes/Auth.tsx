@@ -58,7 +58,7 @@ export default function Auth() {
               <circle cx="16" cy="16" r="13" fill="none" stroke="#3375ff" strokeWidth="3" />
               <circle cx="16" cy="16" r="5" fill="#3375ff" />
             </svg>
-            <span className="text-xl font-semibold tracking-tight">Synapse</span>
+            <span className="text-xl font-semibold tracking-tight">Infora AI</span>
           </Link>
         </div>
 

@@ -29,7 +29,7 @@ export default function Landing() {
               <circle cx="16" cy="16" r="13" fill="none" stroke="#3375ff" strokeWidth="3" />
               <circle cx="16" cy="16" r="5" fill="#3375ff" />
             </svg>
-            <span className="text-lg font-semibold tracking-tight">Synapse</span>
+            <span className="text-lg font-semibold tracking-tight">Infora AI</span>
           </div>
           <nav className="flex items-center gap-3">
             <Link to="/auth" className="btn-ghost">Log in</Link>
@@ -68,7 +68,7 @@ export default function Landing() {
         </div>
 
         <footer className="border-t border-surface-800/60 py-6 text-center text-xs text-surface-500">
-          Synapse — a personal AI intelligence platform. Phase 1.
+          Infora AI — a personal AI intelligence platform. Phase 1.
         </footer>
       </div>
     </div>

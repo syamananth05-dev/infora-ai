@@ -7,9 +7,9 @@ interface ThemeState {
 }
 
 export const useThemeStore = create<ThemeState>((set, get) => ({
-  theme: (localStorage.getItem('synapse-theme') as 'dark' | 'light') || 'dark',
+  theme: (localStorage.getItem('infora-theme') as 'dark' | 'light') || 'dark',
   setTheme: (t) => {
-    localStorage.setItem('synapse-theme', t);
+    localStorage.setItem('infora-theme', t);
     document.documentElement.classList.toggle('dark', t === 'dark');
     set({ theme: t });
   },

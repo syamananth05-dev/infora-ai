@@ -90,7 +90,7 @@ export default function Sidebar() {
             <circle cx="16" cy="16" r="13" fill="none" stroke="#3375ff" strokeWidth="3" />
             <circle cx="16" cy="16" r="5" fill="#3375ff" />
           </svg>
-          <span className="font-semibold tracking-tight">Synapse</span>
+          <span className="font-semibold tracking-tight">Infora AI</span>
         </Link>
         <button onClick={() => setSidebar(false)} className="icon-btn md:hidden" aria-label="Collapse sidebar">
           ✕
