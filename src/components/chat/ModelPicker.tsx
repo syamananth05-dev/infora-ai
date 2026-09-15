@@ -46,7 +46,7 @@ export default function ModelPicker({
       {open && (
         <>
           <div className="fixed inset-0 z-30" onClick={() => setOpen(false)} />
-          <div className="card absolute right-0 z-40 mt-2 w-340px] animate-fade-up overflow-hidden">
+          <div className="card absolute right-0 z-40 mt-2 w-[340px] animate-fade-up overflow-hidden">
             <div className="border-b border-surface-200 p-2 dark:border-surface-800">
               <input
                 autoFocus
@@ -56,7 +56,7 @@ export default function ModelPicker({
                 onChange={(e) => setQuery(e.target.value)}
               />
             </div>
-            <div className="max-h-;46vh] overflow-y-auto">
+            <div className="max-h-[46vh] overflow-y-auto">
               {list.map((m) => (
                 <button
                   key={m.id}

@@ -60,7 +60,7 @@ export default function Landing() {
         <div className="grid gap-4 pb-20 sm:grid-cols-2">
           {FEATURES.map((f) => (
             <div key={f.title} className="rounded-xl border border-surface-800 bg-surface-900/50 p-5 text-left backdrop-blur">
-              <div className="text-xh">{f.icon}</div>
+              <div className="text-xl">{f.icon}</div>
               <h3 className="mt-2 font-semibold">{f.title}</h3>
               <p className="mt-1 text-sm leading-relaxed text-surface-400">{f.text}</p>
             </div>

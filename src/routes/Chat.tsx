@@ -455,7 +455,7 @@ function MessageBubble({
   return (
     <div className="mb-6 animate-fade-up">
       <div className="mb-1.5 flex items-center gap-2 text-xs text-surface-400">
-        <span className={`flex h-6 w-6 items-center justify-center rounded-full text-m10px] font-medium ${isUser ? 'bg-surface-200 dark:bg-surface-800' : 'bg-accent-600 text-white'}`}>
+        <span className={`flex h-6 w-6 items-center justify-center rounded-full text-[10px] font-medium ${isUser ? 'bg-surface-200 dark:bg-surface-800' : 'bg-accent-600 text-white'}`}>
           {isUser ? 'You' : 'S'}
         </span>
         <span>{isUser ? 'You' : msg.model || 'Assistant'}</span>
