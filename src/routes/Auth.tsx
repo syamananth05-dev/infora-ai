@@ -32,12 +32,9 @@ export default function Auth() {
           options: { data: { full_name: name || undefined } },
         });
         if (error) throw error;
-        if (supabase.auth.getSession) {
-          // PKCE: session may exist immediately if email confirmation is off
-          const { data } = await supabase.auth.getSession();
-          if (data.session) navigate('/dashboard');
-          else setNotice('Check your inbox to confirm your email, then log in.');
-        }
+        const { data } = await supabase.auth.getSession();
+        if (data.session) navigate('/dashboard');
+        else setNotice('Check your inbox to confirm your email, then log in.');
       } else {
         const { error } = await supabase.auth.resetPasswordForEmail(email, {
           redirectTo: `${window.location.origin}/auth`,
@@ -50,15 +47,6 @@ export default function Auth() {
     } finally {
       setBusy(false);
     }
-  };
-
-  const google = async () => {
-    setError('');
-    const { error } = await supabase.auth.signInWithOAuth({
-      provider: 'google',
-      options: { redirectTo: `${window.location.origin}/dashboard` },
-    });
-    if (error) setError(error.message);
   };
 
   return (
@@ -84,23 +72,7 @@ export default function Auth() {
             {mode === 'forgot' && "We'll email you a reset link."}
           </p>
 
-          <button onClick={google} className="btn-outline mt-5 w-full py-2">
-            <svg width="16" height="16" viewBox="0 0 24 24">
-              <path fill="#4285F4" d="M23.5 12.3c0-.9-.1-1.5-.3-2.2H12v4.1h6.5c-.1 1.1-.8 2.7-2.4 3.8l-.02.15 3.5 2.7.24.02c2.2-2 3.5-5 3.5-8.6z" />
-              <path fill="#34A853" d="M12 24c3.2 0 5.9-1.1 7.9-2.9l-3.8-2.9c-1 .7-2.4 1.2-4.1 1.2-3.1 0-5.8-2.1-6.8-5l-.14.01-3.6 2.8-.05.13C3.3 21.3 7.3 24 12 24z" />
-              <path fill="#FBBC05" d="M5.2 14.4c-.24-.72-.38-1.5-.38-2.4s.14-1.68.37-2.4l-.01-.16L1.55 6.6l-.12.06C.5 8.3 0 10.1 0 12s.5 3.7 1.43 5.34l3.77-2.94z" />
-              <path fill="#EA4335" d="M12 4.6c2.2 0 3.7.95 4.6 1.75l3.35-3.27C17.9 1.14 15.2 0 12 0 7.3 0 3.3 2.7 1.43 6.66l3.77 2.94c1-2.9 3.7-5 6.8-5z" />
-            </svg>
-            Continue with Google
-          </button>
-
-          <div className="my-4 flex items-center gap-3 text-xs text-surface-400">
-            <div className="h-px flex-1 bg-surface-200 dark:bg-surface-800" />
-            or
-            <div className="h-px flex-1 bg-surface-200 dark:bg-surface-800" />
-          </div>
-
-          <form onSubmit={submit} className="space-y-3">
+          <form onSubmit={submit} className="mt-5 space-y-3">
             {mode === 'signup' && (
               <input className="input" placeholder="Your name" value={name} onChange={(e) => setName(e.target.value)} />
             )}
