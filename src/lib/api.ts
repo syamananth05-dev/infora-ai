@@ -1,8 +1,16 @@
 import { getAccessToken, EDGE_FUNCTION_BASE } from './supabase';
 
+export interface ToolEvent {
+  name: string;
+  args: Record<string, unknown>;
+  phase: 'start' | 'done';
+  summary?: string;
+}
+
 export interface ChatStreamHandlers {
   onMeta?: (meta: { conversation_id: string; message_id: string; model: string }) => void;
   onDelta?: (text: string) => void;
+  onTool?: (tool: ToolEvent) => void;
   onDone?: (info: {
     usage: { tokens_in: number; tokens_out: number; cost_usd: number; latency_ms: number };
     message_id?: string;
@@ -15,6 +23,7 @@ export interface ChatStreamPayload {
   project_id?: string | null;
   parent_message_id?: string | null;
   model: string;
+  mode?: 'chat' | 'agent';
   content: string;
   temperature?: number;
   attachments?: { name: string; mime: string; size: number; path?: string }[];
@@ -32,7 +41,8 @@ export async function streamChat(
   handlers: ChatStreamHandlers
 ): Promise<void> {
   const headers = await authHeaders();
-  const res = await fetch(`${EDGE_FUNCTION_BASE}/chat`, {
+  const endpoint = payload.mode === 'agent' ? 'agent' : 'chat';
+  const res = await fetch(`${EDGE_FUNCTION_BASE}/${endpoint}`, {
     method: 'POST',
     headers,
     body: JSON.stringify(payload),
@@ -66,6 +76,9 @@ export async function streamChat(
           break;
         case 'delta':
           handlers.onDelta?.(data.text);
+          break;
+        case 'tool':
+          handlers.onTool?.(data);
           break;
         case 'done':
           handlers.onDone?.(data);
