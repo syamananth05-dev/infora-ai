@@ -40,6 +40,142 @@ const PRESETS: ConnectorPreset[] = [
   { name: 'Custom API', type: 'custom', icon: '🔌', blurb: 'Connect any REST API or webhook.', fields: [{ key: 'base_url', label: 'Base URL', placeholder: 'https://api.example.com' }, { key: 'token', label: 'API key / token (optional)', placeholder: 'your key', optional: true }, { key: 'token_name', label: 'Header name for the key (optional)', placeholder: 'X-API-Key', optional: true }], help: 'Works with almost any service that has an API. The agent handles the auth header automatically.' },
 ];
 
+const HELP_STEPS: Record<string, { steps: string[]; link?: string }> = {
+  'Notion': {
+    steps: [
+      'Go to notion.so/my-integrations and click New integration.',
+      'Name it Infora, select your workspace, and submit.',
+      'Copy the Internal Integration Secret (starts with secret_).',
+      'In Notion, open each page you want Infora to see, tap the ... menu, then Connections, and add the Infora integration.',
+      'Paste the secret here and save.',
+    ],
+    link: 'https://www.notion.so/my-integrations',
+  },
+  'Google Workspace': {
+    steps: [
+      'One-click Google sign-in is arriving in the next update.',
+      'For now, paste a Google OAuth access token (starts with ya29.) if you have one.',
+      'Full Gmail, Calendar, Drive and Sheets access will be one click once released.',
+    ],
+  },
+  'Slack': {
+    steps: [
+      'Go to api.slack.com/apps and click Create New App, then From scratch.',
+      'Name it Infora and pick your workspace.',
+      'In the left menu open Incoming Webhooks, toggle it ON, then Add New Webhook to Workspace and pick the channel.',
+      'Copy the Webhook URL and paste it here.',
+    ],
+    link: 'https://api.slack.com/apps',
+  },
+  'Telegram': {
+    steps: [
+      'Open Telegram and message @BotFather.',
+      'Send /newbot and follow the prompts, then copy the bot token (looks like 123456:ABC...).',
+      'Open a chat with your new bot and press Start so it can message you.',
+      'Message @userinfobot to get your numeric chat ID.',
+      'Paste both the bot token and chat ID here.',
+    ],
+    link: 'https://t.me/BotFather',
+  },
+  'Zoho': {
+    steps: [
+      'Go to api-console.zoho.com and create a Self Client.',
+      'Generate an OAuth token with the scopes you need (e.g. ZohoCRM.modules.READ).',
+      'Paste the token here.',
+    ],
+    link: 'https://api-console.zoho.com',
+  },
+  'GitHub': {
+    steps: [
+      'Go to github.com/settings/tokens and generate a new token. Fine-grained is recommended.',
+      'Select only the repositories it needs, with read access (add Issues write if Infora should file issues for you).',
+      'Copy the token (starts with github_pat_ or ghp_) and paste it here.',
+    ],
+    link: 'https://github.com/settings/tokens',
+  },
+  'Jira': {
+    steps: [
+      'Go to id.atlassian.com, open Security, then API tokens, and create one.',
+      'Paste your site URL (https://yoursite.atlassian.net), your Atlassian email, and the token here.',
+    ],
+    link: 'https://id.atlassian.com/manage-profile/security/api-tokens',
+  },
+  'Linear': {
+    steps: [
+      'Open Linear, go to Settings, then Security & access, then Personal API keys.',
+      'Create a new key and copy it (starts with lin_api_).',
+      'Paste it here.',
+    ],
+  },
+  'Airtable': {
+    steps: [
+      'Go to airtable.com/create/tokens (Account, then Developer hub).',
+      'Create a new token with the scopes you need (e.g. read records) and select which bases it can access.',
+      'Copy the token (starts with pat) and paste it here.',
+    ],
+    link: 'https://airtable.com/create/tokens',
+  },
+  'ClickUp': {
+    steps: [
+      'Open ClickUp, tap your avatar, then Settings, then Apps.',
+      'Create an API token and copy it (starts with pk_).',
+      'Paste it here.',
+    ],
+  },
+  'Asana': {
+    steps: [
+      'Open the Asana developer console (asana.com, Developer apps).',
+      'Create a new personal access token.',
+      'Copy it (looks like 1/1234:abc...) and paste it here.',
+    ],
+  },
+  'Trello': {
+    steps: [
+      'Go to trello.com/power-ups/admin and log in.',
+      'Create a new Power-Up (or find your API key on that page) and copy the key.',
+      'Click Token next to the key, approve it, and copy the token.',
+      'Paste both the key and token here.',
+    ],
+  },
+  'Stripe': {
+    steps: [
+      'Use Test mode first: dashboard.stripe.com/testmode/developers/apikeys.',
+      'Copy the Secret key (starts with sk_test_).',
+      'Paste it here. Test keys are safe to experiment with.',
+    ],
+    link: 'https://dashboard.stripe.com/testmode/developers/apikeys',
+  },
+  'HubSpot': {
+    steps: [
+      'Open HubSpot Settings, then Integrations, then Private Apps.',
+      'Create a private app with the scopes you need (e.g. CRM read).',
+      'Copy the token (starts with pat-) and paste it here.',
+    ],
+  },
+  'n8n': {
+    steps: [
+      'Open your workflow in n8n and add a Webhook node.',
+      'Copy the Production URL.',
+      'Paste it here. The agent can then trigger that workflow whenever you ask.',
+    ],
+  },
+  'MCP Server': {
+    steps: [
+      'Get the URL of any MCP server (Streamable HTTP) you want to use.',
+      'Optionally add its bearer token.',
+      'Paste the URL here. Infora auto-discovers its tools in Agent mode.',
+    ],
+  },
+  'Custom API': {
+    steps: [
+      'Find the API documentation of the service you want to connect.',
+      'Paste its base URL (e.g. https://api.example.com).',
+      'Add the API key and its header name if the service needs one.',
+      'The agent handles the auth automatically from there.',
+    ],
+  },
+};
+
 type Tab = (typeof TABS)[number];
 
 export default function Settings() {
@@ -59,6 +195,7 @@ export default function Settings() {
   const [openConn, setOpenConn] = useState<string | null>(null);
   const [connVals, setConnVals] = useState<Record<string, string>>({});
   const [connMsg, setConnMsg] = useState('');
+  const [helpOpen, setHelpOpen] = useState(false);
 
   const { data: connectors } = useQuery({
     queryKey: ['integrations'],
@@ -270,6 +407,12 @@ export default function Settings() {
           <p className="text-sm text-surface-500">
             Connect an app once — then anyone on the team can use it from Agent mode by just asking. Also supports MCP servers (the same standard Claude uses) — paste a URL and Infora learns its tools. Keys are shared with the whole team.
           </p>
+          <button
+            onClick={() => setHelpOpen(true)}
+            className="btn-outline inline-flex items-center gap-1.5 px-3 py-1.5 text-xs"
+          >
+            ❓ How to connect apps — step-by-step guide
+          </button>
           {connMsg && <p className="card p-3 text-sm">{connMsg}</p>}
           {PRESETS.map((p) => (
             <div key={p.name} className="card p-4">
@@ -377,6 +520,8 @@ export default function Settings() {
           </div>
         </div>
       )}
+
+      {helpOpen && <ConnHelpModal onClose={() => setHelpOpen(false)} />}
     </div>
   );
 }
@@ -386,6 +531,66 @@ function MiniStat({ label, value }: { label: string; value: string }) {
     <div className="card p-4">
       <p className="text-xs text-surface-400">{label}</p>
       <p className="mt-1 text-lg font-semibold tabular-nums">{value}</p>
+    </div>
+  );
+}
+
+function ConnHelpModal({ onClose }: { onClose: () => void }) {
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 p-0 sm:items-center sm:p-6"
+      onClick={onClose}
+    >
+      <div
+        className="card max-h-[85vh] w-full max-w-lg overflow-y-auto rounded-t-2xl p-5 sm:rounded-2xl"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="mb-3 flex items-start justify-between gap-3">
+          <div>
+            <h3 className="text-lg font-semibold">How to connect your apps</h3>
+            <p className="text-xs text-surface-400">Three steps, once per app — then the whole team can use it in Agent mode.</p>
+          </div>
+          <button onClick={onClose} className="btn-ghost px-2 py-1 text-sm">✕</button>
+        </div>
+        <ol className="mb-3 list-decimal space-y-1 pl-5 text-sm text-surface-600 dark:text-surface-300">
+          <li>Click <span className="font-medium">Connect</span> on an app in the Connectors tab.</li>
+          <li>Open that app and copy its key or token — exact steps for every app are below.</li>
+          <li>Paste it back and hit <span className="font-medium">Save connection</span>. Done.</li>
+        </ol>
+        <p className="mb-4 text-xs text-surface-400">
+          After saving, just ask Infora in Agent mode — e.g. search my Notion for the launch plan. Keys are shared with your whole team.
+        </p>
+        <div className="space-y-2">
+          {PRESETS.map((p) => {
+            const g = HELP_STEPS[p.name];
+            if (!g) return null;
+            return (
+              <details key={p.name} className="group rounded-lg border border-surface-200 p-3 dark:border-surface-800">
+                <summary className="flex cursor-pointer list-none items-center gap-2 text-sm font-medium">
+                  <span className="text-lg">{p.icon}</span>
+                  {p.name}
+                  <span className="ml-auto text-xs text-surface-400 transition-transform group-open:rotate-180">▼</span>
+                </summary>
+                <ol className="mt-2 list-decimal space-y-1 pl-5 text-xs text-surface-600 dark:text-surface-300">
+                  {g.steps.map((s, i) => (
+                    <li key={i}>{s}</li>
+                  ))}
+                </ol>
+                {g.link && (
+                  <a
+                    href={g.link}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="mt-2 inline-block text-xs font-medium text-accent-600 hover:underline dark:text-accent-400"
+                  >
+                    Open {p.name} →
+                  </a>
+                )}
+              </details>
+            );
+          })}
+        </div>
+      </div>
     </div>
   );
 }

@@ -30,6 +30,7 @@ export interface Conversation {
   title: string;
   mode: string;
   model_hint: string | null;
+  summary?: string | null;
   pinned: boolean;
   archived: boolean;
   created_at: string;
@@ -56,6 +57,7 @@ export interface Message {
   tokens_out: number | null;
   cost_usd: number | null;
   created_at: string;
+  compressed?: boolean;
 }
 
 export interface ModelInfo {

@@ -131,3 +131,20 @@ export function downloadFile(filename: string, content: string, mime = 'applicat
   a.click();
   URL.revokeObjectURL(url);
 }
+
+export async function compressConversation(conversationId: string, model: string): Promise<void> {
+  const headers = await authHeaders();
+  const res = await fetch(`${EDGE_FUNCTION_BASE}/chat`, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify({ action: 'compress', conversation_id: conversationId, model }),
+  });
+  if (!res.ok) {
+    let message = `Compress failed (${res.status})`;
+    try {
+      const j = await res.json();
+      message = j.message || j.error || message;
+    } catch {}
+    throw new Error(message);
+  }
+}

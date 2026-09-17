@@ -2,10 +2,10 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '../lib/supabase';
-import { streamChat, downloadFile } from '../lib/api';
+import { streamChat, downloadFile, compressConversation } from '../lib/api';
 import { useUIStore } from '../lib/stores';
 import { useModels, useSession } from '../hooks/useSession';
-import { timeAgo, formatTokens, type Message } from '../lib/types';
+import { timeAgo, formatTokens, formatCost, type Message, type ModelInfo } from '../lib/types';
 import ModelPicker from '../components/chat/ModelPicker';
 import { Markdown, CopyButton } from '../components/Markdown';
 
@@ -25,12 +25,28 @@ export default function Chat() {
   const [model, setModel] = useState(defaultModel);
   useEffect(() => setModel(defaultModel), [defaultModel]);
 
+  // Transparency: today's team usage for the free-quota pill
+  const { data: today } = useQuery({
+    queryKey: ['usage-today'],
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc('get_today_usage');
+      if (error) throw error;
+      return data as { requests: number; tokens_in: number; tokens_out: number; cost: number; errors: number };
+    },
+    refetchInterval: 30000,
+  });
+
   const [input, setInput] = useState('');
   const [images, setImages] = useState<string[]>([]); // data URLs
   const [fileMeta, setFileMeta] = useState<{ name: string; mime: string; size: number; path?: string }[]>([]);
   const [streaming, setStreaming] = useState(false);
   const [error, setError] = useState('');
   const [agentMode, setAgentMode] = useState(false);
+  const [safeMode, setSafeMode] = useState(
+    () => (typeof window !== 'undefined' && localStorage.getItem('infora-safe-mode')) === '1'
+  );
+  const [flightPlan, setFlightPlan] = useState<{ text: string; inTok: number; outTok: number; cost: number } | null>(null);
+  const [compressing, setCompressing] = useState(false);
   const [toolStatus, setToolStatus] = useState<{ name: string; detail: string } | null>(null);
   const abortRef = useRef<AbortController | null>(null);
 
@@ -140,6 +156,15 @@ export default function Chat() {
   const [streamMsg, setStreamMsg] = useState<LocalMsg | null>(null);
   const display = streamMsg ? [...path, streamMsg] : path;
 
+  // Transparency: context gauge + budget
+  const ctxTokens = useMemo(() => {
+    const live = display.filter((m) => !m.compressed);
+    const chars = live.reduce((a, m) => a + m.content.length, 0) + ((conv as any)?.summary?.length ?? 0);
+    return Math.ceil(chars / 4);
+  }, [display, (conv as any)?.summary]);
+  const ctxLimit = modelsData?.models.find((m) => m.id === model)?.context_length ?? 0;
+  const requestsLeft = today ? Math.max(0, 50 - today.requests) : null;
+
   // reset leaf when conversation changes
   useEffect(() => {
     setLeafId(null);
@@ -155,12 +180,26 @@ export default function Chat() {
 
   // ---- Send ----
   const send = useCallback(
-    async (opts?: { content?: string; parentId?: string | null }) => {
+    async (opts?: { content?: string; parentId?: string | null; model?: string }) => {
       setError('');
       setToolStatus(null);
       const text = (opts?.content ?? input).trim();
       if (!text) return;
       if (streaming) return;
+
+      // Safe Mode: show a flight plan before spending
+      if (safeMode && !opts?.content) {
+        const estIn = ctxTokens + Math.ceil(text.length / 4) + 120;
+        const estOut = agentMode ? 900 : 420;
+        const m = modelsData?.models.find((x) => x.id === model);
+        const estCost = m
+          ? (estIn / 1e6) * (m.input_price_per_1m ?? 0) + (estOut / 1e6) * (m.output_price_per_1m ?? 0)
+          : 0;
+        setFlightPlan({ text, inTok: estIn, outTok: estOut, cost: estCost });
+        return;
+      }
+
+      const useModel = opts?.model ?? model;
 
       // parent for the new user message
       const parentId = opts?.parentId ?? path[path.length - 1]?.id ?? null;
@@ -168,7 +207,7 @@ export default function Chat() {
       const payload: Parameters<typeof streamChat>[0] = {
         conversation_id: conversationId || undefined,
         mode: agentMode ? 'agent' : 'chat',
-        model,
+        model: useModel,
         content: text,
         parent_message_id: parentId,
         attachments: fileMeta,
@@ -208,7 +247,7 @@ export default function Chat() {
         role: 'assistant',
         content: '',
         attachments: [],
-        model,
+        model: useModel,
         tokens_in: null,
         tokens_out: null,
         cost_usd: null,
@@ -246,6 +285,7 @@ export default function Chat() {
             qc.invalidateQueries({ queryKey: ['conversations'] });
             qc.invalidateQueries({ queryKey: ['conversation', conversationId] });
             qc.invalidateQueries({ queryKey: ['usage-totals'] });
+            qc.invalidateQueries({ queryKey: ['usage-today'] });
           },
         });
       } catch (err: any) {
@@ -256,13 +296,34 @@ export default function Chat() {
         abortRef.current = null;
       }
     },
-    [input, streaming, model, fileMeta, images, path, conversationId, agentMode, session, navigate, qc]
+    [input, streaming, model, fileMeta, images, path, conversationId, agentMode, session, navigate, qc, safeMode, ctxTokens, modelsData]
   );
 
   const stop = () => {
     abortRef.current?.abort();
     setStreaming(false);
     setStreamMsg(null);
+  };
+
+  const confirmFlight = (chosenModel?: string) => {
+    const fp = flightPlan;
+    setFlightPlan(null);
+    if (fp) send({ content: fp.text, model: chosenModel });
+  };
+
+  const compress = async () => {
+    if (!conversationId || compressing) return;
+    setCompressing(true);
+    setError('');
+    try {
+      await compressConversation(conversationId, model);
+      qc.invalidateQueries({ queryKey: ['messages', conversationId] });
+      qc.invalidateQueries({ queryKey: ['conversation', conversationId] });
+    } catch (e: any) {
+      setError(e?.message || 'Could not compress this conversation');
+    } finally {
+      setCompressing(false);
+    }
   };
 
   // ---- File / image handling ----
@@ -351,6 +412,20 @@ export default function Chat() {
           </button>
         )}
         <ModelPicker value={model} onChange={setModel} />
+        <div className="hidden items-center gap-2 md:flex">
+          <ContextGauge tokens={ctxTokens} limit={ctxLimit} />
+          <UsagePill today={today} />
+        </div>
+        {conversationId && path.length > 10 && (
+          <button
+            onClick={compress}
+            disabled={compressing}
+            className={`icon-btn ${compressing ? 'opacity-60' : ''}`}
+            title="Smart Compress: fold older messages into a memory brief so nothing is forgotten"
+          >
+            {compressing ? '⏳' : '🧠'}
+          </button>
+        )}
         <button onClick={exportChat} className="icon-btn" title="Export">⤓</button>
         {conv && (
           <button
@@ -426,6 +501,18 @@ export default function Chat() {
           )}
           <div className="flex items-end gap-2 rounded-xl border border-surface-200 bg-white px-3 py-2 shadow-soft dark:border-surface-700 dark:bg-surface-950">
             <button
+              onClick={() =>
+                setSafeMode((v) => {
+                  localStorage.setItem('infora-safe-mode', v ? '0' : '1');
+                  return !v;
+                })
+              }
+              className={`btn-outline shrink-0 px-3 py-1.5 text-sm ${safeMode ? 'border-accent-500 text-accent-600 dark:text-accent-400' : ''}`}
+              title="Safe Mode: review a token & cost flight plan before every send"
+            >
+              🛡 Safe
+            </button>
+            <button
               onClick={() => setAgentMode((v) => !v)}
               className={`btn-outline shrink-0 px-3 py-1.5 text-sm ${agentMode ? 'border-accent-500 text-accent-600 dark:text-accent-400' : ''}`}
               title="Agent mode: AI can search the web and read pages to complete tasks"
@@ -484,6 +571,17 @@ export default function Chat() {
           </p>
         </div>
       </div>
+
+      {flightPlan && (
+        <FlightPlanModal
+          plan={flightPlan}
+          model={model}
+          models={modelsData?.models ?? []}
+          requestsLeft={requestsLeft}
+          onConfirm={confirmFlight}
+          onCancel={() => setFlightPlan(null)}
+        />
+      )}
     </div>
   );
 }
@@ -554,6 +652,128 @@ function MessageBubble({
           {msg.model ? ` · ${msg.model}` : ''}
         </div>
       )}
+    </div>
+  );
+}
+
+function ContextGauge({ tokens, limit }: { tokens: number; limit: number }) {
+  if (!limit) return null;
+  const pct = Math.min(100, (tokens / limit) * 100);
+  const bar = pct >= 90 ? 'bg-red-500' : pct >= 70 ? 'bg-amber-500' : 'bg-emerald-500';
+  const txt = pct >= 90 ? 'text-red-500' : pct >= 70 ? 'text-amber-500' : 'text-emerald-500';
+  return (
+    <div
+      className="flex items-center gap-1.5"
+      title={`Context: ~${formatTokens(tokens)} of ${formatTokens(limit)} tokens (${pct.toFixed(0)}%) — Smart Compress (🧠) frees space without forgetting`}
+    >
+      <div className="h-1.5 w-14 overflow-hidden rounded-full bg-surface-200 dark:bg-surface-800">
+        <div className={`h-full transition-all ${bar}`} style={{ width: `${pct}%` }} />
+      </div>
+      <span className={`text-[10px] tabular-nums ${txt}`}>
+        {formatTokens(tokens)}/{formatTokens(limit)}
+      </span>
+    </div>
+  );
+}
+
+function UsagePill({
+  today,
+}: {
+  today?: { requests: number; tokens_in: number; tokens_out: number; cost: number; errors?: number };
+}) {
+  if (!today) return null;
+  const left = Math.max(0, 50 - today.requests);
+  const cls =
+    left <= 4
+      ? 'border-red-400/60 text-red-500'
+      : left <= 10
+        ? 'border-amber-400/60 text-amber-500'
+        : 'border-surface-200 text-surface-500 dark:border-surface-700';
+  return (
+    <span
+      className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] tabular-nums ${cls}`}
+      title={`Today: ${today.requests} of 50 free requests · ${formatTokens(today.tokens_in + today.tokens_out)} tokens · ${formatCost(today.cost)} est. spend`}
+    >
+      ⚡ {today.requests}/50
+    </span>
+  );
+}
+
+function FlightPlanModal({
+  plan,
+  model,
+  models,
+  requestsLeft,
+  onConfirm,
+  onCancel,
+}: {
+  plan: { text: string; inTok: number; outTok: number; cost: number };
+  model: string;
+  models: ModelInfo[];
+  requestsLeft: number | null;
+  onConfirm: (model?: string) => void;
+  onCancel: () => void;
+}) {
+  const [pick, setPick] = useState(model);
+  const freeModel = useMemo(
+    () =>
+      models
+        .filter((m) => m.id.endsWith(':free') && m.context_length >= 32000)
+        .sort((a, b) => b.context_length - a.context_length)[0],
+    [models]
+  );
+  const chosen = models.find((m) => m.id === pick);
+  const estCost = chosen
+    ? (plan.inTok / 1e6) * (chosen.input_price_per_1m ?? 0) + (plan.outTok / 1e6) * (chosen.output_price_per_1m ?? 0)
+    : plan.cost;
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" onClick={onCancel}>
+      <div className="card w-full max-w-md p-5" onClick={(e) => e.stopPropagation()}>
+        <h3 className="text-lg font-semibold">🛡 Flight plan</h3>
+        <p className="mt-1 line-clamp-2 text-sm text-surface-500">{plan.text}</p>
+        <div className="mt-4 grid grid-cols-3 gap-2 text-center">
+          <div className="rounded-lg bg-surface-100 p-2 dark:bg-surface-800/60">
+            <p className="text-[10px] text-surface-400">Input ~</p>
+            <p className="text-sm font-semibold tabular-nums">{formatTokens(plan.inTok)}</p>
+          </div>
+          <div className="rounded-lg bg-surface-100 p-2 dark:bg-surface-800/60">
+            <p className="text-[10px] text-surface-400">Output ~</p>
+            <p className="text-sm font-semibold tabular-nums">{formatTokens(plan.outTok)}</p>
+          </div>
+          <div className="rounded-lg bg-surface-100 p-2 dark:bg-surface-800/60">
+            <p className="text-[10px] text-surface-400">Est. cost</p>
+            <p className="text-sm font-semibold tabular-nums">{estCost === 0 ? 'Free' : `$${estCost.toFixed(4)}`}</p>
+          </div>
+        </div>
+        <p className="mt-2 text-xs text-surface-400">
+          {requestsLeft === null
+            ? 'Based on your conversation so far.'
+            : requestsLeft > 0
+              ? `${requestsLeft} free requests left today (team-wide).`
+              : 'Free daily quota is used up — this request may fail or cost money.'}
+        </p>
+        <div className="mt-4 space-y-2">
+          <p className="text-xs font-medium text-surface-400">Choose engine</p>
+          <button
+            onClick={() => setPick(model)}
+            className={`w-full rounded-lg border p-3 text-left text-sm ${pick === model ? 'border-accent-500 bg-accent-500/10' : 'border-surface-200 dark:border-surface-700'}`}
+          >
+            ⭐ Best — {models.find((m) => m.id === model)?.name ?? model}
+          </button>
+          {freeModel && freeModel.id !== model && (
+            <button
+              onClick={() => setPick(freeModel.id)}
+              className={`w-full rounded-lg border p-3 text-left text-sm ${pick === freeModel.id ? 'border-accent-500 bg-accent-500/10' : 'border-surface-200 dark:border-surface-700'}`}
+            >
+              💰 Cheapest — {freeModel.name} · always $0
+            </button>
+          )}
+        </div>
+        <div className="mt-5 flex gap-2">
+          <button onClick={onCancel} className="btn-outline flex-1">Cancel</button>
+          <button onClick={() => onConfirm(pick)} className="btn-primary flex-1">Confirm & send</button>
+        </div>
+      </div>
     </div>
   );
 }
