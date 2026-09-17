@@ -15,8 +15,8 @@ jobs:
       - uses: actions/checkout@v4
       - name: Rebuild patch scripts
         run: |
-          cat scripts/gz/connhelp.aa scripts/gz/connhelp.ab scripts/gz/connhelp.ac scripts/gz/connhelp.ad | base64 -d | gunzip > /tmp/connhelp_patch.py
-          cat scripts/gz/transparency.aa scripts/gz/transparency.ab scripts/gz/transparency.ac scripts/gz/transparency.ad scripts/gz/transparency.ae | base64 -d | gunzip > /tmp/transparency_patch.py
+          cat scripts/gz/connhelp.aa scripts/gz/connhelp.ab scripts/gz/connhelp.ac scripts/gz/connhelp.ad | gunzip > /tmp/connhelp_patch.py
+          cat scripts/gz/transparency.aa scripts/gz/transparency.ab scripts/gz/transparency.ac scripts/gz/transparency.ad scripts/gz/transparency.ae | gunzip > /tmp/transparency_patch.py
       - name: Apply patches
         run: |
           python3 /tmp/transparency_patch.py .
