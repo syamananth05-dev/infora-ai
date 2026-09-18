@@ -4,8 +4,27 @@ import { supabase } from '../lib/supabase';
 import { useConversations, useProjects } from '../hooks/useData';
 import { useSession } from '../hooks/useSession';
 import { timeAgo, formatCost, formatTokens } from '../lib/types';
+import { useEffect, useState } from 'react';
 
 export default function Dashboard() {
+
+  const [liveMsgs, setLiveMsgs] = useState(0);
+  const [liveChats, setLiveChats] = useState(0);
+  useEffect(() => {
+    let alive = true;
+    const tick = async () => {
+      try {
+        const start = new Date(); start.setHours(0, 0, 0, 0);
+        const m = await supabase.from('messages').select('id', { count: 'exact', head: true }).gte('created_at', start.toISOString());
+        const c = await supabase.from('conversations').select('id', { count: 'exact', head: true }).gte('created_at', start.toISOString());
+        if (alive) { setLiveMsgs(m.count ?? 0); setLiveChats(c.count ?? 0); }
+      } catch {}
+    };
+    tick();
+    const id = setInterval(tick, 30000);
+    return () => { alive = false; clearInterval(id); };
+  }, []);
+
   const { session } = useSession();
   const { data: convos = [] } = useConversations();
   const { data: projects = [] } = useProjects();
@@ -52,6 +71,23 @@ export default function Dashboard() {
           <Stat label="Active members" value={String(usage.active_users ?? 0)} />
         </div>
       )}
+
+      <div className="mb-8 rounded-2xl border border-emerald-500/20 bg-emerald-500/5 p-4">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <span className="relative flex h-2.5 w-2.5">
+              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75"></span>
+              <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-emerald-500"></span>
+            </span>
+            <h2 className="text-sm font-semibold">Live activity today</h2>
+          </div>
+          <span className="text-xs text-surface-400">updates every 30s</span>
+        </div>
+        <div className="mt-3 grid grid-cols-2 gap-3">
+          <div><p className="text-2xl font-bold">{liveMsgs}</p><p className="text-xs text-surface-400">messages sent</p></div>
+          <div><p className="text-2xl font-bold">{liveChats}</p><p className="text-xs text-surface-400">chats started</p></div>
+        </div>
+      </div>
 
       <div className="grid gap-8 md:grid-cols-2">
         {/* Recent conversations */}

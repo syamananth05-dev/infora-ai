@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '../lib/supabase';
 import { useSession } from '../hooks/useSession';
@@ -51,6 +51,19 @@ export default function Tasks() {
       return data as TaskRow[];
     },
   });
+
+  // Live sync (Update 5b): tasks refresh automatically when anything changes
+  useEffect(() => {
+    if (!session?.user?.id) return;
+    const channel = supabase
+      .channel('tasks-live')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'scheduled_tasks', filter: `user_id=eq.${session.user.id}` }, () => {
+        qc.invalidateQueries({ queryKey: ['scheduled_tasks'] });
+      })
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [session?.user?.id, qc]);
+
 
   const { data: runs = [] } = useQuery({
     queryKey: ['task_runs', openTask],

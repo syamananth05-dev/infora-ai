@@ -25,6 +25,23 @@ export default function Chat() {
   const [model, setModel] = useState(defaultModel);
   useEffect(() => setModel(defaultModel), [defaultModel]);
 
+
+  // Live sync (Update 5b): assistant replies from other devices appear automatically
+  const liveConvId = conversationId ?? '';
+  useEffect(() => {
+    if (!liveConvId) return;
+    const channel = supabase
+      .channel('chat-live-' + liveConvId)
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages', filter: `conversation_id=eq.${liveConvId}` }, (payload: any) => {
+        if (payload?.new?.role !== 'assistant') return;
+        qc.invalidateQueries({ queryKey: ['messages', liveConvId] });
+        qc.invalidateQueries({ queryKey: ['conversations'] });
+      })
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [liveConvId, qc]);
+
+
   // Transparency: today's team usage for the free-quota pill
   const { data: today } = useQuery({
     queryKey: ['usage-today'],
