@@ -14,23 +14,34 @@ UA = 'InforaAI-HealthCheck/1.0'
 
 
 def rpc(url, payload, timeout=15):
-    req = urllib.request.Request(
-        url,
-        data=json.dumps(payload).encode(),
-        headers={'Content-Type': 'application/json', 'Accept': 'application/json, text/event-stream', 'User-Agent': UA},
-        method='POST',
-    )
-    try:
-        with urllib.request.urlopen(req, timeout=timeout) as r:
-            return r.status, r.read(2_000_000).decode('utf-8', 'replace')
-    except urllib.error.HTTPError as e:
+    for _ in range(3):
+        req = urllib.request.Request(
+            url,
+            data=json.dumps(payload).encode(),
+            headers={'Content-Type': 'application/json', 'Accept': 'application/json, text/event-stream', 'User-Agent': UA},
+            method='POST',
+        )
         try:
-            body = e.read(2000).decode('utf-8', 'replace')
-        except Exception:
-            body = ''
-        return e.code, body
-    except Exception as e:
-        return 0, str(e)[:200]
+            with urllib.request.urlopen(req, timeout=timeout) as r:
+                return r.status, r.read(2_000_000).decode('utf-8', 'replace')
+        except urllib.error.HTTPError as e:
+            if e.code in (307, 308):
+                loc = e.headers.get('Location')
+                if loc:
+                    if loc.startswith('/'):
+                        from urllib.parse import urlsplit
+                        p = urlsplit(url)
+                        loc = f"{p.scheme}://{p.netloc}{loc}"
+                    url = loc
+                    continue
+            try:
+                body = e.read(2000).decode('utf-8', 'replace')
+            except Exception:
+                body = ''
+            return e.code, body
+        except Exception as e:
+            return 0, str(e)[:200]
+    return 0, 'too many redirects'
 
 
 def parse_tools(body):
@@ -80,6 +91,13 @@ def test_item(item):
 
 def main():
     items = json.load(open(FEATURED))['items']
+    # known endpoint corrections (idempotent)
+    URL_FIXES = {
+        'PayPal (official MCP)': 'https://mcp.paypal.com/http',
+    }
+    for item in items:
+        if item['n'] in URL_FIXES:
+            item['u'] = URL_FIXES[item['n']]
     results = []
     with concurrent.futures.ThreadPoolExecutor(max_workers=12) as ex:
         for name, s, x, h in ex.map(test_item, items):
