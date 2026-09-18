@@ -88,7 +88,7 @@ export default function VideoGen() {
         ) : null}
       </div>
       <p className="mt-1 text-sm text-surface-500">
-        Text to video, paid with credits. A video costs {videoCost} credits — charged only when it succeeds, never for failures.
+        Text to video — a Pro feature, launching with Infora Pro subscriptions. Chat, research, documents, images, connectors and everything else stay free forever.
       </p>
 
       <div className="mt-4 rounded-xl border border-surface-200 bg-surface-50 p-4 dark:border-surface-800 dark:bg-surface-900">
@@ -101,14 +101,14 @@ export default function VideoGen() {
         />
         <div className="mt-2 flex flex-wrap items-center gap-2">
           <button onClick={generate} disabled={busy || !prompt.trim()} className="btn-primary">
-            {busy ? status || 'Working…' : `Generate video (${videoCost} credits)`}
+            {busy ? status || 'Working…' : '🚀 Coming with Infora Pro'}
           </button>
           {balance !== null && balance < videoCost ? (
             <span className="text-xs text-red-500">Not enough credits</span>
           ) : null}
         </div>
         <p className="mt-2 text-xs text-surface-400">
-          New accounts get 100 free credits. Top-ups are coming with subscriptions.
+          Pro plans will include a monthly credit allowance (a video costs {videoCost} credits). Your balance carries over.
         </p>
       </div>
 
