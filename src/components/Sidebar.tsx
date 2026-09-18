@@ -7,6 +7,7 @@ import { useUIStore, useThemeStore } from '../lib/stores';
 import { supabase } from '../lib/supabase';
 import { timeAgo } from '../lib/types';
 import type { Conversation } from '../lib/types';
+import CreditsChip from './CreditsChip';
 
 function groupByDate(items: Conversation[]) {
   const now = new Date();
@@ -126,6 +127,7 @@ export default function Sidebar() {
 
       {/* Nav */}
       <div className="space-y-0.5 px-3 py-2">
+        <CreditsChip />
         <NavLink to="/projects" label="Projects" icon="📁" />
         <NavLink to="/knowledge" label="Knowledge" icon="🧠" />
         <NavLink to="/council" label="Council" icon="⚖️" />
