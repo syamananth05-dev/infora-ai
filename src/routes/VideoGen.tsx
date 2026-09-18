@@ -5,6 +5,7 @@ import { useSession } from '../hooks/useSession';
 export default function VideoGen() {
   const { session } = useSession();
   const [balance, setBalance] = useState<number | null>(null);
+  const [founder, setFounder] = useState(false);
   const [videoCost, setVideoCost] = useState(10);
   const [prompt, setPrompt] = useState('');
   const [busy, setBusy] = useState(false);
@@ -16,8 +17,14 @@ export default function VideoGen() {
   const refreshBalance = async () => {
     try {
       const { data, error: fnError } = await supabase.functions.invoke('video', { body: { action: 'balance' } });
-      if (!fnError && data?.balance !== undefined) {
-        setBalance(data.balance);
+      if (!fnError && data) {
+        if (data.founder) {
+          setFounder(true);
+          setBalance(null);
+        } else {
+          setFounder(false);
+          if (data.balance !== undefined) setBalance(data.balance);
+        }
         if (data.video_cost) setVideoCost(data.video_cost);
       }
     } catch {}
@@ -81,9 +88,9 @@ export default function VideoGen() {
     <div className="mx-auto w-full max-w-3xl px-4 py-6 sm:px-6">
       <div className="flex items-center justify-between">
         <h1 className="text-xl font-semibold">🎬 Video Studio</h1>
-        {balance !== null ? (
+        {founder || balance !== null ? (
           <span className="rounded-full bg-primary/10 px-3 py-1 text-xs font-medium text-primary">
-            ⚡ {balance} credits
+            ⚡ {founder ? '∞' : balance} credits
           </span>
         ) : null}
       </div>
@@ -103,7 +110,7 @@ export default function VideoGen() {
           <button onClick={generate} disabled={busy || !prompt.trim()} className="btn-primary">
             {busy ? status || 'Working…' : '🚀 Coming with Infora Pro'}
           </button>
-          {balance !== null && balance < videoCost ? (
+          {!founder && balance !== null && balance < videoCost ? (
             <span className="text-xs text-red-500">Not enough credits</span>
           ) : null}
         </div>
