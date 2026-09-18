@@ -21,6 +21,7 @@ const AUTH_INFO: Record<string, { label: string; cls: string }> = {
 function Row({
   item,
   connected,
+  partial,
   onOpen,
   open,
   token,
@@ -30,6 +31,7 @@ function Row({
 }: {
   item: CatalogItem;
   connected: boolean;
+  partial?: boolean;
   onOpen: () => void;
   open: boolean;
   token: string;
@@ -48,7 +50,11 @@ function Row({
         </div>
         {auth && <span className={`hidden shrink-0 text-[11px] font-medium sm:block ${auth.cls}`}>{auth.label}</span>}
         {connected ? (
-          <span className="shrink-0 text-xs font-medium text-emerald-600 dark:text-emerald-400">✓ Connected</span>
+          partial ? (
+            <span className="shrink-0 text-xs font-medium text-amber-600 dark:text-amber-400">⚠ Needs sign-in</span>
+          ) : (
+            <span className="shrink-0 text-xs font-medium text-emerald-600 dark:text-emerald-400">✓ Connected</span>
+          )
         ) : (
           <button onClick={onOpen} className="btn-outline shrink-0 px-3 py-1.5 text-xs">
             {open ? 'Close' : 'Connect'}
@@ -88,9 +94,11 @@ function Row({
 export default function CatalogModal({
   onClose,
   connectedNames,
+  partialNames,
 }: {
   onClose: () => void;
   connectedNames: Set<string>;
+  partialNames: Set<string>;
 }) {
   const { session } = useSession();
   const qc = useQueryClient();
@@ -152,6 +160,7 @@ export default function CatalogModal({
       const config: Record<string, string> = { url: item.u };
       const t = token.trim();
       if (t) config.token = t;
+      if (item.a) config.auth = item.a;
       const { error } = await supabase.from('integrations').upsert(
         { name: item.n, type: 'mcp', config, created_by: session!.user.id },
         { onConflict: 'name' }
@@ -160,7 +169,13 @@ export default function CatalogModal({
         setMsg(`Could not save ${item.n}: ${error.message}`);
         return;
       }
-      setMsg(`${item.n} connected! Ask Infora in Agent mode to use it.`);
+      if (!t && item.a === 'oauth') {
+        setMsg(`${item.n} URL saved — but this app needs sign-in before it can be used (one-click sign-in is coming). Meanwhile: paste a token above if you have one, or use the app's preset in the Connectors tab.`);
+      } else if (!t && item.a === 'key') {
+        setMsg(`${item.n} URL saved — this server needs an API key. Create a (usually free) key on the provider's site, paste it above, and reconnect.`);
+      } else {
+        setMsg(`${item.n} connected! Ask Infora in Agent mode to use it.`);
+      }
       setOpenItem(null);
       setToken('');
       qc.invalidateQueries({ queryKey: ['integrations'] });
@@ -236,6 +251,7 @@ export default function CatalogModal({
                     key={item.u}
                     item={item}
                     connected={connectedNames.has(item.n)}
+                    partial={partialNames.has(item.n)}
                     open={openItem === item.u}
                     onOpen={() => {
                       setOpenItem(openItem === item.u ? null : item.u);
@@ -266,6 +282,7 @@ export default function CatalogModal({
                     key={item.u}
                     item={item}
                     connected={connectedNames.has(item.n)}
+                    partial={partialNames.has(item.n)}
                     open={openItem === item.u}
                     onOpen={() => {
                       setOpenItem(openItem === item.u ? null : item.u);

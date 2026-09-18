@@ -202,12 +202,17 @@ export default function Settings() {
   const { data: connectors } = useQuery({
     queryKey: ['integrations'],
     queryFn: async () => {
-      const { data, error } = await supabase.from('integrations').select('name,type,updated_at');
+      const { data, error } = await supabase.from('integrations').select('name,type,updated_at,config');
       if (error) throw error;
-      return data as { name: string; type: string; updated_at: string }[];
+      return data as { name: string; type: string; updated_at: string; config?: Record<string, string> }[];
     },
   });
   const connectedNames = new Set((connectors ?? []).map((c) => c.name));
+  const partialNames = new Set(
+    (connectors ?? [])
+      .filter((c) => c.type === 'mcp' && ((c.config?.auth === 'oauth') || (c.config?.auth === 'key' && !c.config?.token)))
+      .map((c) => c.name)
+  );
 
   const saveConnector = async (preset: ConnectorPreset) => {
     const config: Record<string, string> = { ...(preset.defaults || {}) };
@@ -533,7 +538,7 @@ export default function Settings() {
 
       {helpOpen && <ConnHelpModal onClose={() => setHelpOpen(false)} />}
       {catalogOpen && (
-        <CatalogModal onClose={() => setCatalogOpen(false)} connectedNames={connectedNames} />
+        <CatalogModal onClose={() => setCatalogOpen(false)} connectedNames={connectedNames} partialNames={partialNames} />
       )}
     </div>
   );
