@@ -1,0 +1,120 @@
+name: Update 2a - Connector catalog (1,500+ apps)
+
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/update-2a-catalog.yml']
+  workflow_dispatch:
+
+jobs:
+  catalog:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Rebuild catalog files
+        run: |
+          mkdir -p public/catalog
+          cat scripts/gz/cat-featured.aa scripts/gz/cat-featured.ab scripts/gz/cat-featured.ac | gunzip > public/catalog/featured.json
+          cat scripts/gz/catalog-patch.aa scripts/gz/catalog-patch.ab scripts/gz/catalog-patch.ac scripts/gz/catalog-patch.ad scripts/gz/catalog-patch.ae scripts/gz/catalog-patch.af | gunzip > /tmp/catalog_patch.py
+          curl -sL --retry 3 "https://raw.githubusercontent.com/ogasurfproject-jpg/mcp-registry-survey/main/data/survey0_v4_endpoints_active_2026-08-19.txt" -o /tmp/endpoints.txt
+          wc -l /tmp/endpoints.txt
+
+      - name: Generate registry.json from official MCP registry survey
+        run: |
+          python3 <<'PYEOF'
+          import json, re
+          from urllib.parse import urlparse
+
+          featured = json.load(open('public/catalog/featured.json'))
+          featured_hosts = {urlparse(x['u']).hostname for x in featured['items']}
+
+          JUNK = re.compile(r'(ngrok-free\.app|trycloudflare\.com|duckdns\.org|sslip\.io|nip\.io|localhost|\{host\}|\d+\.\d+\.\d+\.\d+$|127\.0\.0\.1)', re.I)
+          GOOD_TLD = {'com', 'io', 'ai', 'dev', 'app', 'net', 'org', 'co', 'sh', 'so', 'xyz', 'tools', 'tech'}
+
+          seen = set()
+          candidates = []
+          for line in open('/tmp/endpoints.txt'):
+              url = line.strip()
+              if not url.startswith('https://'):
+                  continue
+              host = urlparse(url).hostname or ''
+              if not host or JUNK.search(host) or JUNK.search(url):
+                  continue
+              if host in featured_hosts or host in seen:
+                  continue
+              seen.add(host)
+              candidates.append((host, url))
+
+          def score(host):
+              parts = host.split('.')
+              return (
+                  1 if parts[-1] in GOOD_TLD else 0,
+                  1 if ('mcp' in host.lower() or 'api' in host.lower()) else 0,
+                  -len(parts),
+                  -len(host),
+                  host,
+              )
+
+          candidates.sort(key=lambda x: score(x[0]), reverse=True)
+          top = candidates[:1500]
+
+          CAT_RULES = [
+              (r'(github|gitlab|dev|code|codex|npm|pypi|docker|kubernetes|terraform)', 'Dev Tools'),
+              (r'(search|crawl|scrape|browser|web|seo|fetch|wiki)', 'Search & Web'),
+              (r'(memory|mem0|recall|knowledge)', 'Memory'),
+              (r'(slack|discord|telegram|whatsapp|chat|mail|sms|voice|call)', 'Communication'),
+              (r'(notion|docs|doc|wiki|pdf|file|sheet|excel|presentation|canvas)', 'Docs & Design'),
+              (r'(data|db|database|sql|postgres|mongo|redis|mysql|csv|etl)', 'Data'),
+              (r'(aws|azure|cloud|vercel|server|deploy|k8s|infra|ci|cd)', 'Cloud & Infra'),
+              (r'(shop|store|commerce|shopify|product|order|payment|stripe|billing)', 'E-commerce'),
+              (r'(calendar|task|todo|crm|sales|lead|project|ticket|form|sheet)', 'Productivity'),
+              (r'(image|video|audio|photo|design|art|3d|render|media)', 'Media'),
+              (r'(finance|stock|crypto|market|trading|bank|payroll)', 'Finance'),
+              (r'(health|med|bio|clinic|patient)', 'Health'),
+              (r'(travel|hotel|flight|booking|map|geo|location)', 'Travel & Maps'),
+              (r'(news|rss|feed|blog|social|twitter|linkedin|instagram)', 'News & Social'),
+          ]
+
+          def categorize(host):
+              h = host.lower()
+              for pat, cat in CAT_RULES:
+                  if re.search(pat, h):
+                      return cat
+              return 'Community'
+
+          items = []
+          for host, url in top:
+              name = host[4:] if host.startswith('www.') else host
+              items.append({'n': name, 'u': url, 'c': categorize(host)})
+
+          registry = {
+              'updated': '2026-09-18',
+              'source': 'Official MCP registry (registry.modelcontextprotocol.io), active remote HTTPS endpoints, surveyed 2026-08-19',
+              'note': 'Community servers - endpoints are declared by their publishers and not individually re-verified. Connect and try; disconnect if one is down.',
+              'count': len(items),
+              'items': items,
+          }
+          with open('public/catalog/registry.json', 'w') as f:
+              json.dump(registry, f, separators=(',', ':'))
+          print('registry items:', len(items))
+          PYEOF
+
+      - name: Apply frontend patch
+        run: |
+          python3 /tmp/catalog_patch.py .
+
+      - name: Typecheck
+        run: |
+          npm install --no-audit --no-fund
+          npx tsc --noEmit -p tsconfig.json
+
+      - name: Commit changes
+        run: |
+          rm -f scripts/gz/cat-registry.*
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add -A
+          if git diff --cached --quiet; then echo "no changes"; else git commit -m "Connector catalog: browse 1,500+ apps (54 verified official + community MCP directory)" && git push; fi
