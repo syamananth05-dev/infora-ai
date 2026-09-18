@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import { useConversations, useProjects } from '../hooks/useData';
@@ -92,6 +92,14 @@ export default function Sidebar() {
 
   const activeChat = location.pathname.startsWith('/chat/');
 
+  const [isFounder, setIsFounder] = useState(false);
+  useEffect(() => {
+    supabase.functions
+      .invoke('video', { body: { action: 'balance' } })
+      .then(({ data }) => { if (data && data.founder) setIsFounder(true); })
+      .catch(() => {});
+  }, []);
+
   const content = (
     <div className="flex h-full w-[264px] flex-col border-r border-surface-200 bg-surface-50 dark:border-surface-800 dark:bg-surface-900">
       {/* Header */}
@@ -129,6 +137,7 @@ export default function Sidebar() {
       <div className="space-y-0.5 px-3 py-2">
         <CreditsChip />
         <NavLink to="/projects" label="Projects" icon="📁" />
+        {isFounder && <NavLink to="/selfbuild" label="Self Build" icon="🛠️" />}
         <NavLink to="/knowledge" label="Knowledge" icon="🧠" />
         <NavLink to="/council" label="Council" icon="⚖️" />
         <NavLink to="/tasks" label="Tasks" icon="⏰" />
