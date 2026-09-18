@@ -1,0 +1,329 @@
+{
+ "t": "2026-09-18T08:22:31Z",
+ "r": [
+  {
+   "n": "Gmail (Google MCP)",
+   "s": "ok",
+   "x": 23,
+   "h": 200
+  },
+  {
+   "n": "Google Drive (Google MCP)",
+   "s": "ok",
+   "x": 8,
+   "h": 200
+  },
+  {
+   "n": "Google Calendar (Google MCP)",
+   "s": "ok",
+   "x": 9,
+   "h": 200
+  },
+  {
+   "n": "Google Docs (Google MCP)",
+   "s": "ok",
+   "x": 2,
+   "h": 200
+  },
+  {
+   "n": "Google Sheets (Google MCP)",
+   "s": "ok",
+   "x": 6,
+   "h": 200
+  },
+  {
+   "n": "Google Slides (Google MCP)",
+   "s": "ok",
+   "x": 4,
+   "h": 200
+  },
+  {
+   "n": "Google Chat (Google MCP)",
+   "s": "ok",
+   "x": 4,
+   "h": 200
+  },
+  {
+   "n": "Google Contacts (Google MCP)",
+   "s": "ok",
+   "x": 3,
+   "h": 200
+  },
+  {
+   "n": "Google Maps",
+   "s": "ok",
+   "x": 5,
+   "h": 200
+  },
+  {
+   "n": "BigQuery (Google MCP)",
+   "s": "ok",
+   "x": 8,
+   "h": 200
+  },
+  {
+   "n": "Notion (official MCP)",
+   "s": "auth",
+   "x": 0,
+   "h": 401
+  },
+  {
+   "n": "Asana (official MCP)",
+   "s": "auth",
+   "x": 0,
+   "h": 401
+  },
+  {
+   "n": "Airtable (official MCP)",
+   "s": "auth",
+   "x": 0,
+   "h": 401
+  },
+  {
+   "n": "Todoist (official MCP)",
+   "s": "auth",
+   "x": 0,
+   "h": 401
+  },
+  {
+   "n": "Excalidraw (official MCP)",
+   "s": "auth",
+   "x": 0,
+   "h": 401
+  },
+  {
+   "n": "HubSpot (official MCP)",
+   "s": "auth",
+   "x": 0,
+   "h": 401
+  },
+  {
+   "n": "Linear (official MCP)",
+   "s": "auth",
+   "x": 0,
+   "h": 401
+  },
+  {
+   "n": "Atlassian Jira & Confluence (official MCP)",
+   "s": "auth",
+   "x": 0,
+   "h": 401
+  },
+  {
+   "n": "monday.com (official MCP)",
+   "s": "auth",
+   "x": 0,
+   "h": 401
+  },
+  {
+   "n": "Slack (official MCP)",
+   "s": "auth",
+   "x": 0,
+   "h": 401
+  },
+  {
+   "n": "Zoom (official MCP)",
+   "s": "ok",
+   "x": 0,
+   "h": 200
+  },
+  {
+   "n": "Figma (official MCP)",
+   "s": "auth",
+   "x": 0,
+   "h": 401
+  },
+  {
+   "n": "Canva (official MCP)",
+   "s": "auth",
+   "x": 0,
+   "h": 401
+  },
+  {
+   "n": "GitHub (Copilot MCP)",
+   "s": "auth",
+   "x": 0,
+   "h": 401
+  },
+  {
+   "n": "Sentry (official MCP)",
+   "s": "auth",
+   "x": 0,
+   "h": 401
+  },
+  {
+   "n": "Vercel (official MCP)",
+   "s": "auth",
+   "x": 0,
+   "h": 401
+  },
+  {
+   "n": "Supabase (official MCP)",
+   "s": "auth",
+   "x": 0,
+   "h": 401
+  },
+  {
+   "n": "Stripe (official MCP)",
+   "s": "auth",
+   "x": 0,
+   "h": 401
+  },
+  {
+   "n": "PayPal (official MCP)",
+   "s": "dead",
+   "x": 0,
+   "h": 404
+  },
+  {
+   "n": "Datadog (official MCP)",
+   "s": "auth",
+   "x": 0,
+   "h": 401
+  },
+  {
+   "n": "Microsoft Learn (official MCP)",
+   "s": "ok",
+   "x": 3,
+   "h": 200
+  },
+  {
+   "n": "Firecrawl (keyless)",
+   "s": "ok",
+   "x": 3,
+   "h": 200
+  },
+  {
+   "n": "Tavily Search",
+   "s": "auth",
+   "x": 0,
+   "h": 401
+  },
+  {
+   "n": "Exa Search",
+   "s": "ok",
+   "x": 2,
+   "h": 200
+  },
+  {
+   "n": "Cloudflare Browser",
+   "s": "auth",
+   "x": 0,
+   "h": 401
+  },
+  {
+   "n": "Cloudflare Radar",
+   "s": "auth",
+   "x": 0,
+   "h": 401
+  },
+  {
+   "n": "DeepWiki",
+   "s": "ok",
+   "x": 3,
+   "h": 200
+  },
+  {
+   "n": "Context7",
+   "s": "ok",
+   "x": 2,
+   "h": 200
+  },
+  {
+   "n": "GitMCP",
+   "s": "ok",
+   "x": 0,
+   "h": 400
+  },
+  {
+   "n": "Mem0 Memory",
+   "s": "dead",
+   "x": 0,
+   "h": 307
+  },
+  {
+   "n": "Cloudflare Docs",
+   "s": "ok",
+   "x": 2,
+   "h": 200
+  },
+  {
+   "n": "Cloudflare (full API)",
+   "s": "auth",
+   "x": 0,
+   "h": 401
+  },
+  {
+   "n": "Cloudflare Workers Bindings",
+   "s": "auth",
+   "x": 0,
+   "h": 401
+  },
+  {
+   "n": "Cloudflare Builds",
+   "s": "auth",
+   "x": 0,
+   "h": 401
+  },
+  {
+   "n": "Cloudflare Observability",
+   "s": "auth",
+   "x": 0,
+   "h": 401
+  },
+  {
+   "n": "Cloudflare Containers",
+   "s": "auth",
+   "x": 0,
+   "h": 401
+  },
+  {
+   "n": "Cloudflare AI Gateway",
+   "s": "auth",
+   "x": 0,
+   "h": 401
+  },
+  {
+   "n": "Cloudflare AutoRAG",
+   "s": "auth",
+   "x": 0,
+   "h": 401
+  },
+  {
+   "n": "Cloudflare Audit Logs",
+   "s": "auth",
+   "x": 0,
+   "h": 401
+  },
+  {
+   "n": "Cloudflare DNS Analytics",
+   "s": "auth",
+   "x": 0,
+   "h": 401
+  },
+  {
+   "n": "Cloudflare GraphQL",
+   "s": "auth",
+   "x": 0,
+   "h": 401
+  },
+  {
+   "n": "Cloudflare Blog",
+   "s": "ok",
+   "x": 4,
+   "h": 200
+  },
+  {
+   "n": "Cloudflare Agents Docs",
+   "s": "ok",
+   "x": 1,
+   "h": 200
+  },
+  {
+   "n": "Zapier (official MCP)",
+   "s": "auth",
+   "x": 0,
+   "h": 401
+  }
+ ]
+}
