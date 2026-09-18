@@ -1,0 +1,14 @@
+name: Update 3e Scheduler cron
+on:
+  schedule:
+    - cron: '*/30 * * * *'
+  workflow_dispatch:
+jobs:
+  run-scheduler:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping Infora scheduler
+        run: |
+          curl -sS -m 300 -X POST \
+            -H "x-cron-key: infora-sched-2026-kx91vq4" \
+            "https://qoqemcsmujehkrksswlg.supabase.co/functions/v1/scheduler" || true
