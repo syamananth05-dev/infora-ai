@@ -10,6 +10,7 @@ export default function Research() {
   const { session } = useSession();
   const qc = useQueryClient();
   const [question, setQuestion] = useState('');
+  const [tier, setTier] = useState<'free' | 'paid'>('free');
   const [busy, setBusy] = useState(false);
   const [result, setResult] = useState<{ id: string; content: string; citations: Citation[] } | null>(null);
   const [error, setError] = useState('');
@@ -32,7 +33,7 @@ export default function Research() {
     setResult(null);
     setShareUrl('');
     try {
-      const { data, error: fnError } = await supabase.functions.invoke('research', { body: { question: question.trim() } });
+      const { data, error: fnError } = await supabase.functions.invoke('research', { body: { question: question.trim(), tier } });
       if (fnError) throw fnError;
       if (data?.error) throw new Error(data.error);
       setResult({ id: data.id, content: data.content, citations: data.citations || [] });
@@ -78,6 +79,16 @@ export default function Research() {
           placeholder="e.g. What are the best low-cost marketing channels for Indian SaaS startups in 2026?"
           className="input w-full"
         />
+        <div className="mt-3 flex flex-wrap items-center gap-3">
+          <label className="flex items-center gap-2 text-sm">
+            <span className="text-xs text-surface-400">Engine</span>
+            <select value={tier} onChange={(e) => setTier(e.target.value as 'free' | 'paid')} className="input w-auto py-1.5 text-sm">
+              <option value="free">Free (₹0 — free models)</option>
+              <option value="paid">Advanced (premium models)</option>
+            </select>
+          </label>
+        </div>
+
         <button onClick={run} disabled={busy || !question.trim()} className="btn-primary mt-3">
           {busy ? 'Researching deeply (1-3 min)…' : 'Start deep research'}
         </button>

@@ -1,15 +1,6 @@
 import { useState } from 'react';
 import { supabase } from '../lib/supabase';
 
-const MODELS = [
-  { id: 'openai/gpt-4o-mini', label: 'GPT-4o mini (OpenAI)' },
-  { id: 'deepseek/deepseek-chat', label: 'DeepSeek Chat' },
-  { id: 'meta-llama/llama-3.3-70b-instruct', label: 'Llama 3.3 70B' },
-  { id: 'google/gemini-flash-1.5', label: 'Gemini Flash 1.5' },
-  { id: 'qwen/qwen-2.5-72b-instruct', label: 'Qwen 2.5 72B' },
-  { id: 'mistralai/mistral-small', label: 'Mistral Small' },
-];
-
 interface Answer {
   model: string;
   content: string;
@@ -18,27 +9,22 @@ interface Answer {
 
 export default function Council() {
   const [question, setQuestion] = useState('');
-  const [selected, setSelected] = useState<string[]>([MODELS[0].id, MODELS[1].id]);
+  const [size, setSize] = useState(7);
+  const [tier, setTier] = useState<'free' | 'paid'>('free');
   const [busy, setBusy] = useState(false);
   const [answers, setAnswers] = useState<Answer[]>([]);
   const [synthesis, setSynthesis] = useState('');
   const [error, setError] = useState('');
 
-  const toggle = (id: string) => {
-    setSelected((prev) =>
-      prev.includes(id) ? prev.filter((m) => m !== id) : prev.length >= 3 ? prev : [...prev, id]
-    );
-  };
-
   const run = async () => {
-    if (busy || !question.trim() || selected.length === 0) return;
+    if (busy || !question.trim()) return;
     setBusy(true);
     setError('');
     setAnswers([]);
     setSynthesis('');
     try {
       const { data, error: fnError } = await supabase.functions.invoke('council', {
-        body: { question: question.trim(), models: selected },
+        body: { question: question.trim(), size, tier },
       });
       if (fnError) throw fnError;
       if (data?.error) throw new Error(data.error);
@@ -55,7 +41,7 @@ export default function Council() {
     <div className="mx-auto w-full max-w-3xl px-4 py-6 sm:px-6">
       <h1 className="text-xl font-semibold">⚖️ Model Council</h1>
       <p className="mt-1 text-sm text-surface-500">
-        Ask up to 3 AI models the same question, then get a merged best answer. Agreement = confidence.
+        {size} AI models answer your question in parallel, then a merged best answer is written. Agreement = confidence.
       </p>
 
       <div className="mt-4 rounded-xl border border-surface-200 bg-surface-50 p-4 dark:border-surface-800 dark:bg-surface-900">
@@ -66,21 +52,29 @@ export default function Council() {
           placeholder="Your question for the council..."
           className="input w-full"
         />
-        <p className="mt-3 text-xs text-surface-400">Pick 2-3 models:</p>
-        <div className="mt-1 grid grid-cols-1 gap-1 sm:grid-cols-2">
-          {MODELS.map((m) => (
-            <label key={m.id} className="flex items-center gap-2 text-sm">
-              <input
-                type="checkbox"
-                checked={selected.includes(m.id)}
-                onChange={() => toggle(m.id)}
-              />
-              {m.label}
-            </label>
-          ))}
+        <div className="mt-3 flex flex-wrap items-center gap-3">
+          <label className="flex items-center gap-2 text-sm">
+            <span className="text-xs text-surface-400">Council size</span>
+            <select value={size} onChange={(e) => setSize(Number(e.target.value))} className="input w-auto py-1.5 text-sm">
+              <option value={5}>5 members</option>
+              <option value={7}>7 members</option>
+            </select>
+          </label>
+          <label className="flex items-center gap-2 text-sm">
+            <span className="text-xs text-surface-400">Tier</span>
+            <select value={tier} onChange={(e) => setTier(e.target.value as 'free' | 'paid')} className="input w-auto py-1.5 text-sm">
+              <option value="free">Free (₹0 — free models)</option>
+              <option value="paid">Paid (premium models)</option>
+            </select>
+          </label>
         </div>
-        <button onClick={run} disabled={busy || !question.trim() || selected.length === 0} className="btn-primary mt-3">
-          {busy ? 'Council in session…' : `Convene council (${selected.length})`}
+        <p className="mt-2 text-xs text-surface-400">
+          {tier === 'free'
+            ? 'Free tier runs on free AI models — no cost, subject to daily limits.'
+            : 'Paid tier uses premium models and consumes credits from the platform AI account.'}
+        </p>
+        <button onClick={run} disabled={busy || !question.trim()} className="btn-primary mt-3">
+          {busy ? 'Council in session…' : `Convene ${size}-member council`}
         </button>
       </div>
 
