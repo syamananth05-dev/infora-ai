@@ -13,6 +13,9 @@ import Settings from './routes/Settings';
 import Knowledge from './routes/Knowledge';
 import Council from './routes/Council';
 import Tasks from './routes/Tasks';
+import Research from './routes/Research';
+import Studio from './routes/Studio';
+import PublicReport from './routes/PublicReport';
 import Admin from './routes/Admin';
 import CommandPalette from './components/CommandPalette';
 
@@ -47,6 +50,7 @@ export default function App() {
     <BrowserRouter>
       <Routes>
         <Route path="/" element={<Landing />} />
+        <Route path="/r/:id" element={<PublicReport />} />
         <Route path="/auth" element={<Auth />} />
         <Route
           element={
@@ -63,6 +67,8 @@ export default function App() {
           <Route path="/knowledge" element={<Knowledge />} />
           <Route path="/council" element={<Council />} />
           <Route path="/tasks" element={<Tasks />} />
+          <Route path="/research" element={<Research />} />
+          <Route path="/studio" element={<Studio />} />
           <Route path="/settings" element={<Settings />} />
           <Route path="/admin" element={<Admin />} />
         </Route>

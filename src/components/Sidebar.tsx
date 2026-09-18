@@ -130,6 +130,8 @@ export default function Sidebar() {
         <NavLink to="/knowledge" label="Knowledge" icon="🧠" />
         <NavLink to="/council" label="Council" icon="⚖️" />
         <NavLink to="/tasks" label="Tasks" icon="⏰" />
+        <NavLink to="/research" label="Research" icon="🔭" />
+        <NavLink to="/studio" label="Studio" icon="📄" />
         <NavLink to="/settings" label="Settings" icon="⚙" />
       </div>
 
