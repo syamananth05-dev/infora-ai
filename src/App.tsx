@@ -10,6 +10,7 @@ import Chat from './routes/Chat';
 import Projects from './routes/Projects';
 import ProjectDetail from './routes/ProjectDetail';
 import Settings from './routes/Settings';
+import Knowledge from './routes/Knowledge';
 import Admin from './routes/Admin';
 import CommandPalette from './components/CommandPalette';
 
@@ -57,6 +58,7 @@ export default function App() {
           <Route path="/chat/:conversationId" element={<Chat />} />
           <Route path="/projects" element={<Projects />} />
           <Route path="/projects/:projectId" element={<ProjectDetail />} />
+          <Route path="/knowledge" element={<Knowledge />} />
           <Route path="/settings" element={<Settings />} />
           <Route path="/admin" element={<Admin />} />
         </Route>
