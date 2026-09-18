@@ -5,6 +5,7 @@ import { supabase } from '../lib/supabase';
 import { useSession, useProfile, useModels } from '../hooks/useSession';
 import { useThemeStore } from '../lib/stores';
 import { downloadFile } from '../lib/api';
+import CatalogModal from '../components/CatalogModal';
 import { formatCost, formatTokens } from '../lib/types';
 import type { UsageRow } from '../lib/types';
 
@@ -196,6 +197,7 @@ export default function Settings() {
   const [connVals, setConnVals] = useState<Record<string, string>>({});
   const [connMsg, setConnMsg] = useState('');
   const [helpOpen, setHelpOpen] = useState(false);
+  const [catalogOpen, setCatalogOpen] = useState(false);
 
   const { data: connectors } = useQuery({
     queryKey: ['integrations'],
@@ -414,6 +416,14 @@ export default function Settings() {
             ❓ How to connect apps — step-by-step guide
           </button>
           {connMsg && <p className="card p-3 text-sm">{connMsg}</p>}
+          <div className="card flex items-center gap-3 border-accent-300/60 p-4 dark:border-accent-500/30">
+            <span className="text-2xl">🌐</span>
+            <div className="flex-1">
+              <h3 className="font-medium">Connector catalog</h3>
+              <p className="text-xs text-surface-400">Browse 1,500+ more apps — official MCP servers (Google, Notion, Slack, GitHub…) plus community servers. Search, pick, connect.</p>
+            </div>
+            <button onClick={() => setCatalogOpen(true)} className="btn-outline shrink-0 px-3 py-1.5 text-sm">Browse</button>
+          </div>
           {PRESETS.map((p) => (
             <div key={p.name} className="card p-4">
               <div className="flex items-center gap-3">
@@ -522,6 +532,9 @@ export default function Settings() {
       )}
 
       {helpOpen && <ConnHelpModal onClose={() => setHelpOpen(false)} />}
+      {catalogOpen && (
+        <CatalogModal onClose={() => setCatalogOpen(false)} connectedNames={connectedNames} />
+      )}
     </div>
   );
 }
