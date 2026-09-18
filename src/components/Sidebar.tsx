@@ -81,6 +81,14 @@ export default function Sidebar() {
     navigate('/auth');
   };
 
+  const handleDeleteConv = async (c: Conversation) => {
+    if (!window.confirm(`Delete "${c.title}"? Its messages will be deleted too.`)) return;
+    const { error } = await supabase.from('conversations').delete().eq('id', c.id);
+    if (error) { window.alert('Could not delete this chat: ' + error.message); return; }
+    qc.invalidateQueries({ queryKey: ['conversations'] });
+    if (location.pathname === `/chat/${c.id}`) navigate('/chat');
+  };
+
   const activeChat = location.pathname.startsWith('/chat/');
 
   const content = (
@@ -127,14 +135,14 @@ export default function Sidebar() {
         {pinned.length > 0 && (
           <Section label="Pinned">
             {pinned.map((c) => (
-              <ConvItem key={c.id} conv={c} active={activeChat && location.pathname === `/chat/${c.id}`} onClose={setSidebar} />
+              <ConvItem key={c.id} conv={c} active={activeChat && location.pathname === `/chat/${c.id}`} onClose={setSidebar} onDelete={handleDeleteConv} />
             ))}
           </Section>
         )}
         {groups.map((g) => (
           <Section key={g.label} label={g.label}>
             {g.items.map((c) => (
-              <ConvItem key={c.id} conv={c} active={activeChat && location.pathname === `/chat/${c.id}`} onClose={setSidebar} />
+              <ConvItem key={c.id} conv={c} active={activeChat && location.pathname === `/chat/${c.id}`} onClose={setSidebar} onDelete={handleDeleteConv} />
             ))}
           </Section>
         ))}
@@ -209,10 +217,12 @@ function ConvItem({
   conv,
   active,
   onClose,
+  onDelete,
 }: {
   conv: Conversation;
   active: boolean;
   onClose: (o: boolean) => void;
+  onDelete: (c: Conversation) => void;
 }) {
   return (
     <Link
@@ -226,7 +236,15 @@ function ConvItem({
     >
       {conv.pinned && <span className="text-[10px] text-accent-500">★</span>}
       <span className="truncate">{conv.title}</span>
-      <span className="ml-auto shrink-0 text-[10px] text-surface-400 group-hover:hidden">{timeAgo(conv.updated_at)}</span>
+      <span className="ml-auto hidden shrink-0 text-[10px] text-surface-400 group-hover:hidden sm:block">{timeAgo(conv.updated_at)}</span>
+      <button
+        onClick={(e) => { e.preventDefault(); e.stopPropagation(); onDelete(conv); }}
+        className="shrink-0 rounded px-1 py-0.5 text-xs text-surface-400 hover:bg-red-500/10 hover:text-red-500"
+        title="Delete chat"
+        aria-label="Delete chat"
+      >
+        🗑
+      </button>
     </Link>
   );
 }
