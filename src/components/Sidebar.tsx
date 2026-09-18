@@ -128,6 +128,8 @@ export default function Sidebar() {
       <div className="space-y-0.5 px-3 py-2">
         <NavLink to="/projects" label="Projects" icon="📁" />
         <NavLink to="/knowledge" label="Knowledge" icon="🧠" />
+        <NavLink to="/council" label="Council" icon="⚖️" />
+        <NavLink to="/tasks" label="Tasks" icon="⏰" />
         <NavLink to="/settings" label="Settings" icon="⚙" />
       </div>
 

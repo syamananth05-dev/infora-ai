@@ -57,7 +57,6 @@ async function extractText(file: File, onProgress?: (s: string) => void): Promis
       parts.push((tc.items as any[]).map((it: any) => it.str).join(' '));
     }
     let text = parts.join('\n\n');
-    // Scanned PDF: no embedded text -> OCR each page (first 30 pages)
     if (text.replace(/\s/g, '').length < 30) {
       const pages = Math.min(pdf.numPages, 30);
       const ocrParts: string[] = [];
@@ -98,13 +97,25 @@ export default function Knowledge() {
   const [paste, setPaste] = useState('');
   const [busy, setBusy] = useState(false);
   const [status, setStatus] = useState('');
+  const [memoryText, setMemoryText] = useState('');
+  const [memoryBusy, setMemoryBusy] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
 
   const { data: docs = [], isLoading } = useQuery({
     queryKey: ['documents'],
     enabled: !!session,
     queryFn: async () => {
-      const { data, error } = await supabase.from('documents').select('*').order('created_at', { ascending: false });
+      const { data, error } = await supabase.from('documents').select('*').eq('kind', 'doc').order('created_at', { ascending: false });
+      if (error) throw error;
+      return data as DocRow[];
+    },
+  });
+
+  const { data: memories = [] } = useQuery({
+    queryKey: ['memories'],
+    enabled: !!session,
+    queryFn: async () => {
+      const { data, error } = await supabase.from('documents').select('*').eq('kind', 'memory').order('created_at', { ascending: false });
       if (error) throw error;
       return data as DocRow[];
     },
@@ -134,7 +145,7 @@ export default function Knowledge() {
       const chunks = chunkText(text);
       const { data: doc, error: derr } = await supabase
         .from('documents')
-        .insert({ user_id: session!.user.id, name, size: text.length, chunks: chunks.length })
+        .insert({ user_id: session!.user.id, name, size: text.length, chunks: chunks.length, kind: 'doc' })
         .select('id')
         .single();
       if (derr) throw derr;
@@ -160,27 +171,52 @@ export default function Knowledge() {
     }
   };
 
-  const deleteDoc = async (d: DocRow) => {
-    if (!window.confirm(`Delete "${d.name}"? Its knowledge will be removed.`)) return;
+  const addMemory = async () => {
+    const text = memoryText.trim();
+    if (memoryBusy || !text) return;
+    setMemoryBusy(true);
+    try {
+      const { data: doc, error: derr } = await supabase
+        .from('documents')
+        .insert({ user_id: session!.user.id, name: `Memory: ${text.slice(0, 40)}${text.length > 40 ? '…' : ''}`, size: text.length, chunks: 1, kind: 'memory' })
+        .select('id')
+        .single();
+      if (derr) throw derr;
+      const { error: cerr } = await supabase.from('knowledge_chunks').insert({
+        user_id: session!.user.id,
+        document_id: doc.id,
+        chunk_index: 0,
+        content: text,
+      });
+      if (cerr) throw cerr;
+      setMemoryText('');
+      qc.invalidateQueries({ queryKey: ['memories'] });
+    } catch (e: any) {
+      window.alert('Could not save memory: ' + (e?.message || 'unknown error'));
+    } finally {
+      setMemoryBusy(false);
+    }
+  };
+
+  const deleteDoc = async (d: DocRow, kind: string) => {
+    if (!window.confirm(`Delete "${d.name}"?`)) return;
     const { error } = await supabase.from('documents').delete().eq('id', d.id);
     if (error) {
       window.alert('Could not delete: ' + error.message);
       return;
     }
-    qc.invalidateQueries({ queryKey: ['documents'] });
+    qc.invalidateQueries({ queryKey: [kind] });
   };
 
   return (
     <div className="mx-auto w-full max-w-3xl px-4 py-6 sm:px-6">
-      <h1 className="text-xl font-semibold">🧠 Knowledge</h1>
+      <h1 className="text-xl font-semibold">🧠 Knowledge & Memory</h1>
       <p className="mt-1 text-sm text-surface-500">
-        Upload documents — your chats and the agent automatically search them when relevant. Private to your account.
+        Your chats and the agent automatically search your documents and memories. Private to your account.
       </p>
 
       <div className="mt-4 rounded-xl border border-surface-200 bg-surface-50 p-4 dark:border-surface-800 dark:bg-surface-900">
-        <label className="block text-sm font-medium">
-          Upload a file (.txt, .md, .csv, .pdf, photos & scans — scanned PDFs are read with OCR)
-        </label>
+        <label className="block text-sm font-medium">Upload a document (.txt, .md, .csv, .pdf, photos & scans)</label>
         <input
           ref={fileRef}
           type="file"
@@ -202,8 +238,39 @@ export default function Knowledge() {
         {status ? <p className="mt-2 text-xs text-surface-400">{status}</p> : null}
       </div>
 
+      <div className="mt-4 rounded-xl border border-surface-200 bg-surface-50 p-4 dark:border-surface-800 dark:bg-surface-900">
+        <label className="block text-sm font-medium">🧬 Memory — things Infora should always remember</label>
+        <p className="mt-1 text-xs text-surface-400">Facts about you: your name, work, preferences, goals. Used automatically in every chat.</p>
+        <div className="mt-2 flex gap-2">
+          <input
+            value={memoryText}
+            onChange={(e) => setMemoryText(e.target.value)}
+            placeholder="e.g. I am Syam, I prefer short answers, I sell SaaS tools"
+            className="input flex-1"
+          />
+          <button onClick={addMemory} disabled={memoryBusy || !memoryText.trim()} className="btn-primary shrink-0">
+            {memoryBusy ? '…' : 'Remember'}
+          </button>
+        </div>
+        {memories.length > 0 ? (
+          <ul className="mt-3 space-y-1">
+            {memories.map((m) => (
+              <li key={m.id} className="flex items-start justify-between gap-2 text-sm">
+                <span className="min-w-0 break-words">{m.name.replace(/^Memory: /, '')}</span>
+                <button
+                  onClick={() => deleteDoc(m, 'memories')}
+                  className="shrink-0 text-xs text-surface-400 hover:text-red-500"
+                >
+                  Forget
+                </button>
+              </li>
+            ))}
+          </ul>
+        ) : null}
+      </div>
+
       <h2 className="mt-6 text-sm font-medium uppercase tracking-wider text-surface-400">
-        Your documents ({docs.length})
+        Documents ({docs.length})
       </h2>
       {isLoading ? (
         <p className="mt-2 text-sm text-surface-400">Loading…</p>
@@ -223,7 +290,7 @@ export default function Knowledge() {
                 </p>
               </div>
               <button
-                onClick={() => deleteDoc(d)}
+                onClick={() => deleteDoc(d, 'documents')}
                 className="shrink-0 rounded px-2 py-1 text-xs text-surface-400 hover:bg-red-500/10 hover:text-red-500"
               >
                 Delete

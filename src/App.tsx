@@ -11,6 +11,8 @@ import Projects from './routes/Projects';
 import ProjectDetail from './routes/ProjectDetail';
 import Settings from './routes/Settings';
 import Knowledge from './routes/Knowledge';
+import Council from './routes/Council';
+import Tasks from './routes/Tasks';
 import Admin from './routes/Admin';
 import CommandPalette from './components/CommandPalette';
 
@@ -59,6 +61,8 @@ export default function App() {
           <Route path="/projects" element={<Projects />} />
           <Route path="/projects/:projectId" element={<ProjectDetail />} />
           <Route path="/knowledge" element={<Knowledge />} />
+          <Route path="/council" element={<Council />} />
+          <Route path="/tasks" element={<Tasks />} />
           <Route path="/settings" element={<Settings />} />
           <Route path="/admin" element={<Admin />} />
         </Route>
