@@ -229,7 +229,7 @@
    "i": "💰",
    "c": "Dev Tools",
    "a": "oauth",
-   "u": "https://mcp.paypal.com",
+   "u": "https://mcp.paypal.com/http",
    "d": "PayPal's official MCP server — payments and orders."
   },
   {
