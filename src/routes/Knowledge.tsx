@@ -35,7 +35,13 @@ function chunkText(text: string, size = 1200): string[] {
   return out;
 }
 
-async function extractText(file: File): Promise<string> {
+async function ocrCanvas(canvas: HTMLCanvasElement): Promise<string> {
+  const Tesseract = await import('tesseract.js');
+  const res = await Tesseract.recognize(canvas, 'eng');
+  return res.data.text || '';
+}
+
+async function extractText(file: File, onProgress?: (s: string) => void): Promise<string> {
   const name = file.name.toLowerCase();
   if (name.endsWith('.pdf')) {
     const pdfjs = await import('pdfjs-dist');
@@ -50,7 +56,37 @@ async function extractText(file: File): Promise<string> {
       const tc = await page.getTextContent();
       parts.push((tc.items as any[]).map((it: any) => it.str).join(' '));
     }
-    return parts.join('\n\n');
+    let text = parts.join('\n\n');
+    // Scanned PDF: no embedded text -> OCR each page (first 30 pages)
+    if (text.replace(/\s/g, '').length < 30) {
+      const pages = Math.min(pdf.numPages, 30);
+      const ocrParts: string[] = [];
+      for (let i = 1; i <= pages; i++) {
+        onProgress?.(`Scanned PDF detected - reading page ${i}/${pages} with OCR...`);
+        const page = await pdf.getPage(i);
+        const viewport = page.getViewport({ scale: 2 });
+        const canvas = document.createElement('canvas');
+        canvas.width = viewport.width;
+        canvas.height = viewport.height;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) continue;
+        await page.render({ canvasContext: ctx, viewport }).promise;
+        ocrParts.push(await ocrCanvas(canvas));
+      }
+      text = ocrParts.join('\n\n');
+    }
+    return text;
+  }
+  if (file.type.startsWith('image/')) {
+    onProgress?.('Reading text from image with OCR...');
+    const bitmap = await createImageBitmap(file);
+    const canvas = document.createElement('canvas');
+    canvas.width = bitmap.width;
+    canvas.height = bitmap.height;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return '';
+    ctx.drawImage(bitmap, 0, 0);
+    return await ocrCanvas(canvas);
   }
   return await file.text();
 }
@@ -61,6 +97,7 @@ export default function Knowledge() {
   const [file, setFile] = useState<File | null>(null);
   const [paste, setPaste] = useState('');
   const [busy, setBusy] = useState(false);
+  const [status, setStatus] = useState('');
   const fileRef = useRef<HTMLInputElement>(null);
 
   const { data: docs = [], isLoading } = useQuery({
@@ -80,17 +117,20 @@ export default function Knowledge() {
       return;
     }
     setBusy(true);
+    setStatus('');
     try {
       let text = '';
       let name = 'Pasted note';
       if (file) {
-        text = await extractText(file);
+        setStatus('Extracting text...');
+        text = await extractText(file, (s) => setStatus(s));
         name = file.name;
       } else {
         text = paste;
       }
+      setStatus('');
       text = (text || '').trim();
-      if (text.length < 20) throw new Error('Could not extract enough text from this file. If it is a scanned PDF, paste the text instead.');
+      if (text.length < 20) throw new Error('Could not read enough text from this file. If it is handwritten or very low quality, paste the text instead.');
       const chunks = chunkText(text);
       const { data: doc, error: derr } = await supabase
         .from('documents')
@@ -116,6 +156,7 @@ export default function Knowledge() {
       window.alert('Upload failed: ' + (e?.message || 'unknown error'));
     } finally {
       setBusy(false);
+      setStatus('');
     }
   };
 
@@ -137,11 +178,13 @@ export default function Knowledge() {
       </p>
 
       <div className="mt-4 rounded-xl border border-surface-200 bg-surface-50 p-4 dark:border-surface-800 dark:bg-surface-900">
-        <label className="block text-sm font-medium">Upload a file (.txt, .md, .csv, .pdf)</label>
+        <label className="block text-sm font-medium">
+          Upload a file (.txt, .md, .csv, .pdf, photos & scans — scanned PDFs are read with OCR)
+        </label>
         <input
           ref={fileRef}
           type="file"
-          accept=".txt,.md,.csv,.pdf"
+          accept=".txt,.md,.csv,.pdf,.png,.jpg,.jpeg,.webp"
           onChange={(e) => setFile(e.target.files?.[0] ?? null)}
           className="mt-2 block w-full text-sm"
         />
@@ -156,6 +199,7 @@ export default function Knowledge() {
         <button onClick={addKnowledge} disabled={busy} className="btn-primary mt-3">
           {busy ? 'Processing…' : 'Add to knowledge'}
         </button>
+        {status ? <p className="mt-2 text-xs text-surface-400">{status}</p> : null}
       </div>
 
       <h2 className="mt-6 text-sm font-medium uppercase tracking-wider text-surface-400">
