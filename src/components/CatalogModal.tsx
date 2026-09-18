@@ -22,6 +22,7 @@ function Row({
   item,
   connected,
   partial,
+  status,
   onOpen,
   open,
   token,
@@ -32,6 +33,7 @@ function Row({
   item: CatalogItem;
   connected: boolean;
   partial?: boolean;
+  status?: { s: string; x: number };
   onOpen: () => void;
   open: boolean;
   token: string;
@@ -56,9 +58,17 @@ function Row({
             <span className="shrink-0 text-xs font-medium text-emerald-600 dark:text-emerald-400">✓ Connected</span>
           )
         ) : (
-          <button onClick={onOpen} className="btn-outline shrink-0 px-3 py-1.5 text-xs">
-            {open ? 'Close' : 'Connect'}
-          </button>
+          <span className="flex shrink-0 items-center gap-2">
+            {status?.s === 'ok' && (
+              <span className="text-[11px] font-medium text-emerald-600 dark:text-emerald-400">✓ Live</span>
+            )}
+            {status?.s === 'dead' && (
+              <span className="text-[11px] font-medium text-surface-400">Offline</span>
+            )}
+            <button onClick={onOpen} className="btn-outline px-3 py-1.5 text-xs">
+              {open ? 'Close' : 'Connect'}
+            </button>
+          </span>
         )}
       </div>
       {open && !connected && (
@@ -74,6 +84,8 @@ function Row({
             onChange={(e) => setToken(e.target.value)}
           />
           <p className="text-[11px] text-surface-400">
+            {status?.s === 'dead' && '⚠ This server was offline at the last health check — it may not respond. '}
+            {status?.s === 'ok' && status.x > 0 && `✓ Live at the last check — ${status.x} tools available. `}
             {item.a === 'none'
               ? 'This server works right away — no key needed.'
               : item.a === 'key'
@@ -113,6 +125,9 @@ export default function CatalogModal({
   const [openItem, setOpenItem] = useState<string | null>(null);
   const [token, setToken] = useState('');
   const [busy, setBusy] = useState(false);
+  const [health, setHealth] = useState<Record<string, { s: string; x: number }>>({});
+  const [testedAt, setTestedAt] = useState('');
+  const [showOffline, setShowOffline] = useState(false);
 
   useEffect(() => {
     let alive = true;
@@ -120,12 +135,17 @@ export default function CatalogModal({
     Promise.all([
       fetch(`${base}catalog/featured.json`).then((r) => r.json()),
       fetch(`${base}catalog/registry.json`).then((r) => r.json()),
+      fetch(`${base}catalog/status.json`).then((r) => r.json()).catch(() => null),
     ])
-      .then(([f, r]: any[]) => {
+      .then(([f, r, st]: any[]) => {
         if (!alive) return;
         setFeatured(f.items ?? []);
         setCommunity(r.items ?? []);
         setCommunityTotal(r.count ?? (r.items ?? []).length);
+        if (st?.t) setTestedAt(String(st.t).slice(0, 10));
+        const h: Record<string, { s: string; x: number }> = {};
+        for (const row of st?.r ?? []) h[row.n] = { s: row.s, x: row.x ?? 0 };
+        setHealth(h);
         setLoading(false);
       })
       .catch(() => {
@@ -150,8 +170,9 @@ export default function CatalogModal({
     (cat === 'All' || x.c === cat) &&
     (!q || x.n.toLowerCase().includes(q) || (x.d ?? '').toLowerCase().includes(q) || x.u.toLowerCase().includes(q));
 
-  const fList = featured.filter(matches);
-  const cList = community.filter(matches);
+  const visible = (x: CatalogItem) => showOffline || health[x.n]?.s !== 'dead';
+  const fList = featured.filter(matches).filter(visible);
+  const cList = community.filter(matches).filter(visible);
 
   const add = async (item: CatalogItem) => {
     setBusy(true);
@@ -199,7 +220,9 @@ export default function CatalogModal({
           <div>
             <h3 className="text-lg font-semibold">Connector catalog</h3>
             <p className="text-xs text-surface-400">
-              {loading ? 'Loading…' : `${total.toLocaleString()} apps and MCP servers — official + community.`}
+              {loading
+                ? 'Loading…'
+                : `${total.toLocaleString()} apps and MCP servers — official + community.${testedAt ? ` Health-checked ${testedAt}.` : ''}`}
             </p>
           </div>
           <button onClick={onClose} className="btn-ghost px-2 py-1 text-sm">
@@ -235,6 +258,15 @@ export default function CatalogModal({
               </button>
             ))}
           </div>
+          <label className="flex items-center gap-2 pt-1 text-[11px] text-surface-400">
+            <input
+              type="checkbox"
+              checked={showOffline}
+              onChange={(e) => setShowOffline(e.target.checked)}
+              className="h-3.5 w-3.5"
+            />
+            Show offline apps (hidden by default)
+          </label>
         </div>
 
         {msg && <p className="border-b border-surface-100 p-3 text-xs dark:border-surface-800">{msg}</p>}
@@ -252,6 +284,7 @@ export default function CatalogModal({
                     item={item}
                     connected={connectedNames.has(item.n)}
                     partial={partialNames.has(item.n)}
+                    status={health[item.n]}
                     open={openItem === item.u}
                     onOpen={() => {
                       setOpenItem(openItem === item.u ? null : item.u);
@@ -283,6 +316,7 @@ export default function CatalogModal({
                     item={item}
                     connected={connectedNames.has(item.n)}
                     partial={partialNames.has(item.n)}
+                    status={health[item.n]}
                     open={openItem === item.u}
                     onOpen={() => {
                       setOpenItem(openItem === item.u ? null : item.u);
