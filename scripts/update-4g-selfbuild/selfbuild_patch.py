@@ -167,9 +167,15 @@ old = "import VideoGen from './routes/VideoGen';"
 assert old in a, 'App import anchor missing'
 a = a.replace(old, old + "\nimport SelfBuild from './routes/SelfBuild';", 1)
 
-old = '            <Route path="/settings" element={<Settings />} />'
-assert old in a, 'App route anchor missing'
-a = a.replace(old, old + '\n            <Route path="/selfbuild" element={<SelfBuild />} />', 1)
+out = []
+inserted = False
+for ln in a.split('\n'):
+    out.append(ln)
+    if '<Route path="/settings"' in ln and not inserted:
+        out.append(ln.replace('path="/settings"', 'path="/selfbuild"').replace('<Settings />', '<SelfBuild />'))
+        inserted = True
+assert inserted, 'App route anchor missing'
+a = '\n'.join(out)
 
 open(ap, 'w').write(a)
 
@@ -186,9 +192,15 @@ old = "  const activeChat = location.pathname.startsWith('/chat/');"
 assert old in s, 'Sidebar activeChat anchor missing'
 s = s.replace(old, old + "\n\n  const [isFounder, setIsFounder] = useState(false);\n  useEffect(() => {\n    supabase.functions\n      .invoke('video', { body: { action: 'balance' } })\n      .then(({ data }) => { if (data && data.founder) setIsFounder(true); })\n      .catch(() => {});\n  }, []);", 1)
 
-old = '        <NavLink to="/projects" label="Projects" icon="🗂️" />'
-assert old in s, 'Sidebar projects nav anchor missing'
-s = s.replace(old, old + '\n        {isFounder && <NavLink to="/selfbuild" label="Self Build" icon="🛠️" />}', 1)
+out = []
+inserted = False
+for ln in s.split('\n'):
+    out.append(ln)
+    if '<NavLink to="/projects"' in ln and not inserted:
+        out.append('        {isFounder && <NavLink to="/selfbuild" label="Self Build" icon="🛠️" />}')
+        inserted = True
+assert inserted, 'Sidebar projects nav anchor missing'
+s = '\n'.join(out)
 
 open(vp, 'w').write(s)
 
