@@ -10,10 +10,8 @@ jobs:
       - uses: actions/checkout@v4
         with:
           ref: main
-      - name: Reassemble and apply patch
-        run: |
-          base64 -d scripts/gz/cat2-patch.b64 | gunzip > /tmp/catalog2_patch.py
-          python3 /tmp/catalog2_patch.py .
+      - name: Apply patch
+        run: python3 scripts/update-2b/catalog2_patch.py .
       - uses: actions/setup-node@v4
         with:
           node-version: 20
