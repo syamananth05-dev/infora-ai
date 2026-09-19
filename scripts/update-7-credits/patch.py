@@ -24,7 +24,7 @@ patch('src/App.tsx', [
 # ---- Sidebar.tsx: founder check via credit_summary RPC; remove video link ----
 patch('src/components/Sidebar.tsx', [
     ("    supabase.functions\n      .invoke('video', { body: { action: 'balance' } })\n      .then(({ data }) => { if (data && data.founder) setIsFounder(true); })\n      .catch(() => {});",
-     "    supabase\n      .rpc('credit_summary')\n      .then(({ data }: any) => { if (data && (data as any).founder) setIsFounder(true); })\n      .catch(() => {});"),
+     "    (async () => {\n      try {\n        const { data } = await supabase.rpc('credit_summary');\n        if (data && (data as any).founder) setIsFounder(true);\n      } catch {}\n    })();"),
     ('        <NavLink to="/video" label="Video" icon="🎬" />\n', ''),
 ])
 
