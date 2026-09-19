@@ -142,6 +142,7 @@ export default function Sidebar() {
         {isFounder && <NavLink to="/selfbuild" label="Self Build" icon="🛠️" />}
         <NavLink to="/knowledge" label="Knowledge" icon="🧠" />
         <NavLink to="/council" label="Council" icon="⚖️" />
+        <NavLink to="/analytics" label="Analytics" icon="📊" />
         <NavLink to="/tasks" label="Tasks" icon="⏰" />
         <NavLink to="/research" label="Research" icon="🔭" />
         <NavLink to="/studio" label="Studio" icon="📄" />

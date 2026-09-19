@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '../lib/supabase';
 import { streamChat, downloadFile, compressConversation } from '../lib/api';
@@ -25,6 +25,16 @@ export default function Chat() {
   const [model, setModel] = useState(defaultModel);
   const [founder, setFounder] = useState(false);
   const [modelSelection, setModelSelection] = useState('best');
+  const location = useLocation();
+  useEffect(() => {
+    const draft = (location.state as any)?.draft;
+    if (draft) {
+      setInput(draft);
+      navigate('/chat', { replace: true });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   useEffect(() => {
     (async () => {
       try {
@@ -684,6 +694,17 @@ function MessageBubble({
   onRegenerate?: () => void;
 }) {
   const isUser = msg.role === 'user';
+  const [previewHtml, setPreviewHtml] = useState<string | null>(null);
+  const htmlBlocks = useMemo(() => {
+    const out: string[] = [];
+    const re = /```html\s*([\s\S]*?)```/g;
+    let m: RegExpExecArray | null;
+    while ((m = re.exec(msg.content || ''))) {
+      const code = m[1].trim();
+      if (/<html[\s>]|<!DOCTYPE/i.test(code)) out.push(code);
+    }
+    return out;
+  }, [msg.content]);
   return (
     <div className="mb-6 animate-fade-up">
       <div className="mb-1.5 flex items-center gap-2 text-xs text-surface-400">
@@ -704,8 +725,20 @@ function MessageBubble({
       {!streaming && msg.content && (
         <div className="mt-1.5 flex items-center gap-1 pl-8 opacity-0 transition-opacity group-hover:opacity-100" style={{ opacity: 1 }}>
           <CopyButton text={msg.content} />
+          {htmlBlocks.length > 0 && (
+            <button onClick={() => setPreviewHtml(htmlBlocks[0])} className="btn-ghost px-2 py-1 text-xs" title="Preview the website">👁 Preview</button>
+          )}
           <button onClick={onBranch} className="btn-ghost px-2 py-1 text-xs" title="Branch from here">🌿 Branch</button>
           {onRegenerate && <button onClick={onRegenerate} className="btn-ghost px-2 py-1 text-xs" title="Regenerate">↻ Regenerate</button>}
+        </div>
+      )}
+      {previewHtml && (
+        <div className="fixed inset-0 z-50 flex flex-col bg-white dark:bg-surface-950">
+          <div className="flex items-center justify-between border-b border-surface-200 px-3 py-2 dark:border-surface-800">
+            <span className="text-sm font-medium">Website preview</span>
+            <button onClick={() => setPreviewHtml(null)} className="btn-outline px-3 py-1.5 text-sm" title="Close preview">✕ Close</button>
+          </div>
+          <iframe title="Website preview" srcDoc={previewHtml} sandbox="allow-scripts allow-popups" className="h-full w-full flex-1 bg-white" />
         </div>
       )}
       {/* assistant meta */}

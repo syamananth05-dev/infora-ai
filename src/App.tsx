@@ -17,6 +17,7 @@ import Research from './routes/Research';
 import Studio from './routes/Studio';
 import ImageGen from './routes/ImageGen';
 import SelfBuild from './routes/SelfBuild';
+import Analytics from './routes/Analytics';
 import PublicReport from './routes/PublicReport';
 import Admin from './routes/Admin';
 import CommandPalette from './components/CommandPalette';
@@ -74,6 +75,7 @@ export default function App() {
           <Route path="/image" element={<ImageGen />} />
           <Route path="/settings" element={<Settings />} />
           <Route path="/selfbuild" element={<SelfBuild />} />
+          <Route path="/analytics" element={<Analytics />} />
           <Route path="/admin" element={<Admin />} />
         </Route>
         <Route path="*" element={<Navigate to="/dashboard" replace />} />
