@@ -482,7 +482,7 @@ ${url}`);
           value={modelSelection}
           onChange={(v: string) => {
             setModelSelection(v);
-            setModel(v === 'best' ? '' : v === 'free' ? 'meta-llama/llama-3.3-70b-instruct:free' : v);
+            setModel(v === 'best' ? '' : v === 'free' ? 'deepseek/deepseek-v4-flash-0731:free' : v);
           }}
         />
         <div className="hidden items-center gap-2 md:flex">
