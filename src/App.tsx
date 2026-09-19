@@ -16,7 +16,6 @@ import Tasks from './routes/Tasks';
 import Research from './routes/Research';
 import Studio from './routes/Studio';
 import ImageGen from './routes/ImageGen';
-import VideoGen from './routes/VideoGen';
 import SelfBuild from './routes/SelfBuild';
 import PublicReport from './routes/PublicReport';
 import Admin from './routes/Admin';
@@ -73,7 +72,6 @@ export default function App() {
           <Route path="/research" element={<Research />} />
           <Route path="/studio" element={<Studio />} />
           <Route path="/image" element={<ImageGen />} />
-          <Route path="/video" element={<VideoGen />} />
           <Route path="/settings" element={<Settings />} />
           <Route path="/selfbuild" element={<SelfBuild />} />
           <Route path="/admin" element={<Admin />} />

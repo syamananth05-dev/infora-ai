@@ -94,10 +94,12 @@ export default function Sidebar() {
 
   const [isFounder, setIsFounder] = useState(false);
   useEffect(() => {
-    supabase.functions
-      .invoke('video', { body: { action: 'balance' } })
-      .then(({ data }) => { if (data && data.founder) setIsFounder(true); })
-      .catch(() => {});
+    (async () => {
+      try {
+        const { data } = await supabase.rpc('credit_summary');
+        if (data && (data as any).founder) setIsFounder(true);
+      } catch {}
+    })();
   }, []);
 
   const content = (
@@ -144,7 +146,6 @@ export default function Sidebar() {
         <NavLink to="/research" label="Research" icon="🔭" />
         <NavLink to="/studio" label="Studio" icon="📄" />
         <NavLink to="/image" label="Image" icon="🎨" />
-        <NavLink to="/video" label="Video" icon="🎬" />
         <NavLink to="/settings" label="Settings" icon="⚙" />
       </div>
 
