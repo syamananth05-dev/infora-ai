@@ -45,7 +45,17 @@ export default function Admin() {
     },
   });
 
-  if (profile && profile.role !== 'admin') {
+  const { data: creditStats } = useQuery({
+    queryKey: ['admin-credit-stats'],
+    enabled: !!profile,
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc('admin_credit_stats');
+      if (error) throw error;
+      return data as any;
+    },
+  });
+
+  if (profile && profile.role !== 'admin' && (profile as any).plan !== 'founder') {
     return <div className="p-10 text-center text-sm text-surface-400">Admin access required.</div>;
   }
 
@@ -55,6 +65,19 @@ export default function Admin() {
       <p className="mb-8 text-sm text-surface-500">
         Aggregated platform usage. Message content is never visible here — only totals.
       </p>
+
+      {creditStats && !creditStats.error && (
+        <div className="mb-8 grid grid-cols-2 gap-2 sm:grid-cols-4">
+          <div className="card p-3"><p className="text-xs text-surface-400">Users</p><p className="text-lg font-bold tabular-nums">{creditStats.total_users}</p></div>
+          <div className="card p-3"><p className="text-xs text-surface-400">Founders</p><p className="text-lg font-bold tabular-nums">{creditStats.founders}</p></div>
+          <div className="card p-3"><p className="text-xs text-surface-400">Pro / Power</p><p className="text-lg font-bold tabular-nums">{creditStats.pro} / {creditStats.power}</p></div>
+          <div className="card p-3"><p className="text-xs text-surface-400">Active today</p><p className="text-lg font-bold tabular-nums">{creditStats.active_today}</p></div>
+          <div className="card p-3"><p className="text-xs text-surface-400">Credits granted today</p><p className="text-lg font-bold tabular-nums">{creditStats.granted_today}</p></div>
+          <div className="card p-3"><p className="text-xs text-surface-400">Credits spent today</p><p className="text-lg font-bold tabular-nums">{creditStats.spent_today}</p></div>
+          <div className="card p-3"><p className="text-xs text-surface-400">Granted this month</p><p className="text-lg font-bold tabular-nums">{creditStats.granted_month}</p></div>
+          <div className="card p-3"><p className="text-xs text-surface-400">Joining bonus left (all)</p><p className="text-lg font-bold tabular-nums">{creditStats.joining_remaining_total}</p></div>
+        </div>
+      )}
 
       {usersError && (
         <div className="mb-4 rounded-lg bg-red-500/10 px-4 py-3 text-sm text-red-600 dark:text-red-400">

@@ -3,7 +3,7 @@
   "private": true,
   "version": "0.1.0",
   "type": "module",
-  "description": "Infora AI — a personal AI intelligence platform (OpenRouter + Supabase + GitHub Pages)",
+  "description": "Infora AI \u2014 a personal AI intelligence platform (OpenRouter + Supabase + GitHub Pages)",
   "scripts": {
     "dev": "vite",
     "build": "tsc --noEmit -p tsconfig.json && vite build",
@@ -27,7 +27,8 @@
     "rehype-highlight": "^7.0.0",
     "remark-gfm": "^4.0.0",
     "tesseract.js": "^5.1.1",
-    "zustand": "^4.5.4"
+    "zustand": "^4.5.4",
+    "xlsx": "^0.18.5"
   },
   "devDependencies": {
     "@types/node": "^20.14.0",

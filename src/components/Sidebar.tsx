@@ -140,6 +140,7 @@ export default function Sidebar() {
         <CreditsChip />
         <NavLink to="/projects" label="Projects" icon="📁" />
         {isFounder && <NavLink to="/selfbuild" label="Self Build" icon="🛠️" />}
+        {isFounder && <NavLink to="/admin" label="Admin" icon="📈" />}
         <NavLink to="/knowledge" label="Knowledge" icon="🧠" />
         <NavLink to="/council" label="Council" icon="⚖️" />
         <NavLink to="/analytics" label="Analytics" icon="📊" />
