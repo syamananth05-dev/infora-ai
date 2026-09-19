@@ -23,6 +23,16 @@ export default function Chat() {
 
   const defaultModel = modelsData?.default_model ?? 'openai/gpt-4o-mini';
   const [model, setModel] = useState(defaultModel);
+  const [founder, setFounder] = useState(false);
+  const [modelSelection, setModelSelection] = useState('best');
+  useEffect(() => {
+    (async () => {
+      try {
+        const { data } = await supabase.rpc('credit_summary');
+        if (data && (data as any).founder) setFounder(true);
+      } catch {}
+    })();
+  }, []);
   useEffect(() => setModel(defaultModel), [defaultModel]);
 
 
@@ -232,6 +242,7 @@ export default function Chat() {
         conversation_id: conversationId || undefined,
         mode: agentMode ? 'agent' : 'chat',
         model: useModel,
+        ...(founder && modelSelection !== 'best' ? { model_selection: modelSelection } : {}),
         content: text,
         parent_message_id: parentId,
         attachments: fileMeta,
@@ -531,18 +542,47 @@ export default function Chat() {
                   return !v;
                 })
               }
-              className={`btn-outline shrink-0 px-3 py-1.5 text-sm ${safeMode ? 'border-accent-500 text-accent-600 dark:text-accent-400' : ''}`}
-              title="Safe Mode: review a token & cost flight plan before every send"
+              className={`btn-outline shrink-0 px-2.5 py-1.5 text-sm ${safeMode ? 'border-accent-500 text-accent-600 dark:text-accent-400' : ''}`}
+              title="Safe Mode: review the estimated credits before every send"
             >
-              🛡 Safe
+              🛡
             </button>
             <button
-              onClick={() => setAgentMode((v) => !v)}
-              className={`btn-outline shrink-0 px-3 py-1.5 text-sm ${agentMode ? 'border-accent-500 text-accent-600 dark:text-accent-400' : ''}`}
+              onClick={() => {
+                if (!agentMode && !window.confirm('Turn on Agent mode? The AI can search the web and read pages to complete bigger tasks (uses more credits).')) return;
+                setAgentMode((v) => !v);
+              }}
+              className={`btn-outline shrink-0 px-2.5 py-1.5 text-sm ${agentMode ? 'border-accent-500 text-accent-600 dark:text-accent-400' : ''}`}
               title="Agent mode: AI can search the web and read pages to complete tasks"
             >
-              ⚡ Agent
+              ⚡
             </button>
+            {founder && (
+              <select
+                value={modelSelection}
+                onChange={(e) => setModelSelection(e.target.value)}
+                className="input w-auto shrink-0 py-1.5 text-sm"
+                title="Founder: model selection"
+              >
+                <option value="best">The Best</option>
+                <option value="free">FREE</option>
+                <optgroup label="Premium models">
+                  <option value="deepseek/deepseek-v3.1">DeepSeek V3.1</option>
+                  <option value="openai/gpt-5.6-luna">GPT-5.6 Luna</option>
+                  <option value="openai/gpt-4o-mini">GPT-4o mini</option>
+                  <option value="anthropic/claude-3.5-haiku-20241022">Claude Haiku</option>
+                </optgroup>
+                <optgroup label="Cheap models">
+                  <option value="google/gemma-3-27b-it">Gemma 3 27B</option>
+                  <option value="mistralai/mistral-nemo">Mistral Nemo</option>
+                </optgroup>
+                <optgroup label="All OpenRouter models">
+                  {(modelsData?.models ?? []).map((m) => (
+                    <option key={m.id} value={m.id}>{m.id}</option>
+                  ))}
+                </optgroup>
+              </select>
+            )}
             {speechSupported && (
     <button
       onClick={toggleMic}
@@ -765,8 +805,8 @@ function FlightPlanModal({
             <p className="text-sm font-semibold tabular-nums">{formatTokens(plan.outTok)}</p>
           </div>
           <div className="rounded-lg bg-surface-100 p-2 dark:bg-surface-800/60">
-            <p className="text-[10px] text-surface-400">Est. cost</p>
-            <p className="text-sm font-semibold tabular-nums">{estCost === 0 ? 'Free' : `$${estCost.toFixed(4)}`}</p>
+            <p className="text-[10px] text-surface-400">Est. credits</p>
+            <p className="text-sm font-semibold tabular-nums">{estCost === 0 ? 'Free' : `${Math.max(1, Math.ceil(estCost * 8300))} credits`}</p>
           </div>
         </div>
         <p className="mt-2 text-xs text-surface-400">

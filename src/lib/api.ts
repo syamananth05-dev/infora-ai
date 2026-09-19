@@ -24,6 +24,7 @@ export interface ChatStreamPayload {
   parent_message_id?: string | null;
   model?: string;
   level?: 1 | 2 | 3;
+  model_selection?: string;
   mode?: 'chat' | 'agent';
   content: string;
   temperature?: number;
