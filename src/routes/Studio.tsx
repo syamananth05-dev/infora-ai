@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase';
 
 type Kind = 'docx' | 'pptx' | 'xlsx';
@@ -25,13 +25,24 @@ export default function Studio() {
   const [prompt, setPrompt] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
+  const [founder, setFounder] = useState(false);
+  const [freeMode, setFreeMode] = useState(true);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const { data } = await supabase.rpc('credit_summary');
+        setFounder(!!(data as any)?.founder);
+      } catch {}
+    })();
+  }, []);
 
   const generate = async () => {
     if (busy || !prompt.trim()) return;
     setBusy(true);
     setError('');
     try {
-      const { data, error: fnError } = await supabase.functions.invoke('studio', { body: { kind, prompt: prompt.trim() } });
+      const { data, error: fnError } = await supabase.functions.invoke('studio', { body: { kind, prompt: prompt.trim(), model_selection: freeMode ? 'free' : 'paid' } });
       if (fnError) throw fnError;
       if (data?.error) throw new Error(data.error);
 
@@ -100,9 +111,20 @@ export default function Studio() {
           placeholder="e.g. A 8-section business proposal for a mobile car wash service in Hyderabad, targeting working professionals"
           className="input mt-3 w-full"
         />
-        <button onClick={generate} disabled={busy || !prompt.trim()} className="btn-primary mt-3">
-          {busy ? 'Creating your file…' : 'Generate file'}
-        </button>
+        <div className="mt-3 flex flex-wrap items-center gap-2">
+          {founder && (
+            <button
+              onClick={() => setFreeMode((v) => !v)}
+              className={`rounded-full border px-2.5 py-1 text-xs font-medium ${freeMode ? 'border-accent-500 bg-accent-500/10 text-accent-600 dark:text-accent-400' : 'border-surface-300 text-surface-500 dark:border-surface-600 dark:text-surface-300'}`}
+              title="Founder: generate with free AI models — zero cost"
+            >
+              🆓 Free
+            </button>
+          )}
+          <button onClick={generate} disabled={busy || !prompt.trim()} className="btn-primary">
+            {busy ? 'Creating your file…' : 'Generate file'}
+          </button>
+        </div>
       </div>
 
       {error ? <p className="mt-4 text-sm text-red-500">{error}</p> : null}

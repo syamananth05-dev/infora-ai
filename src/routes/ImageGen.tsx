@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { supabase } from '../lib/supabase';
 
 const RATIOS = [
   { id: 'square', label: 'Square 1:1', w: 1024, h: 1024 },
@@ -14,6 +15,16 @@ export default function ImageGen() {
   const [busy, setBusy] = useState(false);
   const [gallery, setGallery] = useState<Gen[]>([]);
   const [error, setError] = useState('');
+  const [founder, setFounder] = useState(false);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const { data } = await supabase.rpc('credit_summary');
+        setFounder(!!(data as any)?.founder);
+      } catch {}
+    })();
+  }, []);
 
   const generate = () => {
     if (busy || !prompt.trim()) return;
@@ -66,6 +77,11 @@ export default function ImageGen() {
               <option key={r.id} value={r.id}>{r.label}</option>
             ))}
           </select>
+          {founder && (
+            <span className="text-xs font-medium text-accent-600 dark:text-accent-400" title="Image generation runs on a completely free service — no credits, no wallet needed">
+              🆓 100% Free
+            </span>
+          )}
           <button onClick={generate} disabled={busy || !prompt.trim()} className="btn-primary ml-auto">
             {busy ? 'Painting…' : 'Generate image'}
           </button>
