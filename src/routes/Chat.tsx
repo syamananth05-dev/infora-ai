@@ -425,6 +425,22 @@ export default function Chat() {
     if (title) await updateConv({ title });
   };
 
+  const shareChat = async () => {
+    const messages = display.map((m) => ({ role: m.role, content: m.content }));
+    const { data, error } = await supabase.rpc('create_shared_link', {
+      p_title: conv?.title || 'Shared conversation',
+      p_messages: { messages },
+    });
+    if (error || !data) {
+      alert('Could not create share link.');
+      return;
+    }
+    const url = `${window.location.origin}${import.meta.env.BASE_URL}s/${data}`;
+    try { await navigator.clipboard.writeText(url); } catch {}
+    alert(`Share link copied:
+${url}`);
+  };
+
   const [editingId, setEditingId] = useState<string | null>(null);
   const branchFrom = (msg: Message) => {
     setLeafId(msg.parent_message_id ?? msg.id);
@@ -471,6 +487,7 @@ export default function Chat() {
             {compressing ? '⏳' : '🧠'}
           </button>
         )}
+        <button onClick={shareChat} className="icon-btn" title="Share: copy a public link to this conversation">🔗</button>
         <button onClick={exportChat} className="icon-btn" title="Export">⤓</button>
         {conv && (
           <button

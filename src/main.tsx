@@ -10,6 +10,11 @@ const queryClient = new QueryClient({
   },
 });
 
+try {
+  const refParam = new URLSearchParams(window.location.search).get('ref');
+  if (refParam) localStorage.setItem('infora-ref', refParam);
+} catch {}
+
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
     <QueryClientProvider client={queryClient}>

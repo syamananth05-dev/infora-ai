@@ -19,6 +19,7 @@ import ImageGen from './routes/ImageGen';
 import SelfBuild from './routes/SelfBuild';
 import Analytics from './routes/Analytics';
 import PublicReport from './routes/PublicReport';
+import SharedView from './routes/SharedView';
 import Admin from './routes/Admin';
 import CommandPalette from './components/CommandPalette';
 
@@ -54,6 +55,7 @@ export default function App() {
       <Routes>
         <Route path="/" element={<Landing />} />
         <Route path="/r/:id" element={<PublicReport />} />
+        <Route path="/s/:id" element={<SharedView />} />
         <Route path="/auth" element={<Auth />} />
         <Route
           element={
