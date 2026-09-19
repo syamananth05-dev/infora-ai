@@ -1,96 +1,170 @@
 import { useMemo, useRef, useState } from 'react';
 import { useModels } from '../../hooks/useSession';
-import { formatContext } from '../../lib/types';
+
+interface ModelRow {
+  id: string;
+  name: string;
+  reasoning?: boolean;
+  vision?: boolean;
+  input_price_per_1m?: number | null;
+}
+
+const PREMIUM = [
+  { id: 'deepseek/deepseek-v3.1', label: 'DeepSeek V3.1', note: 'Deepest thinking — code, analysis, reports' },
+  { id: 'openai/gpt-5.6-luna', label: 'GPT-5.6 Luna', note: 'Balanced flagship' },
+  { id: 'openai/gpt-4o-mini', label: 'GPT-4o mini', note: 'Fast everyday workhorse' },
+  { id: 'anthropic/claude-3.5-haiku-20241022', label: 'Claude Haiku', note: 'Sharp writing & summaries' },
+];
+
+const FAST = [
+  { id: 'google/gemma-3-27b-it', label: 'Gemma 3 27B', note: 'Fast & light' },
+  { id: 'mistralai/mistral-nemo', label: 'Mistral Nemo', note: 'Fast & light' },
+];
+
+function priceLabel(p?: number | null) {
+  return typeof p === 'number' ? `$${p < 1 ? p.toFixed(3) : p.toFixed(2)}/M` : '';
+}
+
+function PickerRow({
+  active,
+  onClick,
+  label,
+  note,
+  right,
+}: {
+  active?: boolean;
+  onClick: () => void;
+  label: string;
+  note?: string;
+  right?: string;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      className={`flex w-full items-center gap-2 px-3 py-2 text-left transition-colors hover:bg-surface-100 dark:hover:bg-surface-800 ${
+        active ? 'bg-accent-500/10' : ''
+      }`}
+    >
+      <span className="min-w-0 flex-1">
+        <span className="block truncate text-sm font-medium">{label}</span>
+        {note && <span className="block truncate text-[11px] text-surface-400">{note}</span>}
+      </span>
+      {right && <span className="shrink-0 text-[10px] text-surface-400">{right}</span>}
+      {active && <span className="shrink-0 text-xs text-accent-500">✓</span>}
+    </button>
+  );
+}
 
 export default function ModelPicker({
   value,
   onChange,
+  founder,
 }: {
   value: string;
-  onChange: (model: string) => void;
+  onChange: (v: string) => void;
+  founder?: boolean;
 }) {
   const { data } = useModels();
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState('');
   const ref = useRef<HTMLDivElement>(null);
 
-  const models = data?.models ?? [];
-  const curated = data?.curated ?? [];
+  const models: ModelRow[] = data?.models ?? [];
 
-  const list = useMemo(() => {
-    const q = query.toLowerCase();
-    const matches = models.filter(
-      (m) => !q || m.name.toLowerCase().includes(q) || m.id.toLowerCase().includes(q)
-    );
-    // curated first
-    const order = (id: string) => {
-      const i = curated.indexOf(id);
-      return i === -1 ? 999 : i;
-    };
-    return [...matches].sort((a, b) => order(a.id) - order(b.id)).slice(0, 60);
-  }, [models, curated, query]);
+  const label =
+    value === 'best'
+      ? '⚡ The Best'
+      : value === 'free'
+        ? '🆓 Free'
+        : models.find((m) => m.id === value)?.name ?? (value ? value.split('/').pop()! : 'The Best');
 
-  const current = models.find((m) => m.id === value);
+  const searchResults = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (!q || !founder) return [];
+    return models
+      .filter((m) => m.name.toLowerCase().includes(q) || m.id.toLowerCase().includes(q))
+      .slice(0, 40);
+  }, [models, query, founder]);
+
+  const pick = (v: string) => {
+    onChange(v);
+    setOpen(false);
+    setQuery('');
+  };
 
   return (
-    <div ref={ref} className="relative">
+    <div ref={ref} className="relative shrink-0">
       <button
         onClick={() => setOpen((o) => !o)}
-        className="btn-outline max-w-[260px] gap-2 py-1.5 text-xs"
-        title="Switch model"
+        className="flex max-w-[150px] items-center gap-1.5 rounded-full border border-surface-300 px-3 py-1.5 text-xs font-medium hover:border-accent-500 dark:border-surface-600"
+        title="Choose model"
       >
-        <span className="truncate font-mono">{current?.name ?? value ?? 'Select model'}</span>
+        <span className="truncate">{label}</span>
         <span className="text-surface-400">▾</span>
       </button>
 
       {open && (
         <>
-          <div className="fixed inset-0 z-30" onClick={() => setOpen(false)} />
-          <div className="card absolute right-0 z-40 mt-2 w-[340px] animate-fade-up overflow-hidden">
-            <div className="border-b border-surface-200 p-2 dark:border-surface-800">
-              <input
-                autoFocus
-                className="input"
-                placeholder="Search models…"
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-              />
-            </div>
-            <div className="max-h-[46vh] overflow-y-auto">
-              {list.map((m) => (
-                <button
-                  key={m.id}
-                  onClick={() => {
-                    onChange(m.id);
-                    setOpen(false);
-                  }}
-                  className={`flex w-full flex-col items-start gap-0.5 px-3 py-2 text-left transition-colors hover:bg-surface-100 dark:hover:bg-surface-800 ${
-                    m.id === value ? 'bg-accent-600/10' : ''
-                    }`}
-                >
-                  <span className="flex w-full items-center gap-2">
-                     <span className="truncate text-sm font-medium">{m.name}</span>
-                    {m.reasoning && (
-                       <span className="rounded bg-violet-500/15 px-1.5 py-px text-[10px] font-medium text-violet-600 dark:text-violet-300">reasoning</span>
-                      )}
-                      {m.vision && (
-                        <span className="rounded bg-emerald-500/15 px-1.5 py-px text-[10px] font-medium text-emerald-600 dark:text-emerald-300">vision</span>
-                      )}
-                     {m.id === value && <span className="ml-auto text-xs text-accent-500">✓</span>}
-                  </span>
-                  <span className="flex w-full items-center gap-2 text-[11px] text-surface-400">
-                      <span className="truncate font-mono">{m.id}</span>
-                      <span className="ml-auto shrink-0">
-                        {m.context_length ? `${formatContext(m.context_length)} ctx` : ''}
-                        {m.input_price_per_1m !== null ? `· $${m.input_price_per_1m.toFixed(2)}/M in` : ''}
-                      </span>
-                   </span>
-                </button>
-              ))}
-              {list.length === 0 && (
-                  <p className="px-3 py-6 text-center text-sm text-surface-400">No models match</p>
+          <div className="fixed inset-0 z-30" onClick={() => { setOpen(false); setQuery(''); }} />
+          <div className="card absolute right-0 z-40 mt-2 w-[min(92vw,360px)] animate-fade-up overflow-hidden">
+            <div className="max-h-[56vh] overflow-y-auto">
+              <p className="px-3 pb-1 pt-3 text-[10px] font-semibold uppercase tracking-wide text-surface-400">Recommended</p>
+              <PickerRow active={value === 'best'} onClick={() => pick('best')} label="⚡ The Best" note="Auto-picks the smartest model for each message" />
+              {founder && (
+                <PickerRow active={value === 'free'} onClick={() => pick('free')} label="🆓 Free" note="Fastest — never costs a credit" />
+              )}
+              {!founder && (
+                <p className="px-3 py-2 text-[11px] text-surface-400">
+                  Pro & Power plans unlock direct model choice. Everything else stays the same.
+                </p>
+              )}
+              {founder && (
+                <>
+                  <p className="px-3 pb-1 pt-3 text-[10px] font-semibold uppercase tracking-wide text-surface-400">Premium</p>
+                  {PREMIUM.map((m) => (
+                    <PickerRow
+                      key={m.id}
+                      active={value === m.id}
+                      onClick={() => pick(m.id)}
+                      label={m.label}
+                      note={m.note}
+                      right={priceLabel(models.find((x) => x.id === m.id)?.input_price_per_1m)}
+                    />
+                  ))}
+                  <p className="px-3 pb-1 pt-3 text-[10px] font-semibold uppercase tracking-wide text-surface-400">Fast & light</p>
+                  {FAST.map((m) => (
+                    <PickerRow key={m.id} active={value === m.id} onClick={() => pick(m.id)} label={m.label} note={m.note} />
+                  ))}
+                </>
               )}
             </div>
+            {founder && (
+              <div className="border-t border-surface-200 p-2 dark:border-surface-800">
+                <input
+                  className="input"
+                  placeholder="Search all models…"
+                  value={query}
+                  onChange={(e) => setQuery(e.target.value)}
+                />
+                {query && (
+                  <div className="mt-1 max-h-[36vh] overflow-y-auto">
+                    {searchResults.map((m) => (
+                      <PickerRow
+                        key={m.id}
+                        active={m.id === value}
+                        onClick={() => pick(m.id)}
+                        label={m.name}
+                        note={m.id}
+                        right={priceLabel(m.input_price_per_1m)}
+                      />
+                    ))}
+                    {searchResults.length === 0 && (
+                      <p className="px-3 py-4 text-center text-xs text-surface-400">No models match</p>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         </>
       )}
