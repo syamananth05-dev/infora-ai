@@ -61,17 +61,17 @@ export default function Council() {
             </select>
           </label>
           <label className="flex items-center gap-2 text-sm">
-            <span className="text-xs text-surface-400">Tier</span>
+            <span className="text-xs text-surface-400">Level</span>
             <select value={tier} onChange={(e) => setTier(e.target.value as 'free' | 'paid')} className="input w-auto py-1.5 text-sm">
-              <option value="free">Free (₹0 — free models)</option>
-              <option value="paid">Paid (premium models)</option>
+              <option value="free">Infora Level 1 (free)</option>
+              <option value="paid">Infora Level 3 (premium)</option>
             </select>
           </label>
         </div>
         <p className="mt-2 text-xs text-surface-400">
           {tier === 'free'
-            ? 'Free tier runs on free AI models — no cost, subject to daily limits.'
-            : 'Paid tier uses premium models and consumes credits from the platform AI account.'}
+            ? 'Infora Level 1 runs on free models — ₹0, subject to daily limits.'
+            : 'Infora Level 3 uses premium models — founders have full access.'}
         </p>
         <button onClick={run} disabled={busy || !question.trim()} className="btn-primary mt-3">
           {busy ? 'Council in session…' : `Convene ${size}-member council`}

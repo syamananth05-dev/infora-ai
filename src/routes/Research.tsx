@@ -83,8 +83,8 @@ export default function Research() {
           <label className="flex items-center gap-2 text-sm">
             <span className="text-xs text-surface-400">Engine</span>
             <select value={tier} onChange={(e) => setTier(e.target.value as 'free' | 'paid')} className="input w-auto py-1.5 text-sm">
-              <option value="free">Free (₹0 — free models)</option>
-              <option value="paid">Advanced (premium models)</option>
+              <option value="free">Infora Level 1 (free)</option>
+              <option value="paid">Infora Level 3 (premium)</option>
             </select>
           </label>
         </div>

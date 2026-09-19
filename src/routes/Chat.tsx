@@ -68,6 +68,7 @@ export default function Chat() {
   const abortRef = useRef<AbortController | null>(null);
 
   const [listening, setListening] = useState(false);
+  const [level, setLevel] = useState<1 | 2 | 3>(1);
   const recRef = useRef<any>(null);
   const speechSupported =
     typeof window !== "undefined" &&
@@ -231,7 +232,8 @@ export default function Chat() {
       const payload: Parameters<typeof streamChat>[0] = {
         conversation_id: conversationId || undefined,
         mode: agentMode ? 'agent' : 'chat',
-        model: useModel,
+        ...(agentMode || opts?.model ? { model: useModel } : {}),
+        level,
         content: text,
         parent_message_id: parentId,
         attachments: fileMeta,
@@ -543,6 +545,16 @@ export default function Chat() {
             >
               ⚡ Agent
             </button>
+            <select
+              value={level}
+              onChange={(e) => setLevel(Number(e.target.value) as 1 | 2 | 3)}
+              className="input w-auto shrink-0 py-1.5 text-sm"
+              title="Infora Level — L1 free, L2 smarter (1 credit), L3 smartest (10 credits)"
+            >
+              <option value={1}>L1 · Free</option>
+              <option value={2}>L2 · Smart</option>
+              <option value={3}>L3 · Genius</option>
+            </select>
             {speechSupported && (
     <button
       onClick={toggleMic}

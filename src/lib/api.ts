@@ -22,7 +22,8 @@ export interface ChatStreamPayload {
   conversation_id?: string;
   project_id?: string | null;
   parent_message_id?: string | null;
-  model: string;
+  model?: string;
+  level?: 1 | 2 | 3;
   mode?: 'chat' | 'agent';
   content: string;
   temperature?: number;
