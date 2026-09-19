@@ -1,4 +1,4 @@
-import sys
+import sys, base64, pathlib
 
 root = sys.argv[1] if len(sys.argv) > 1 else '.'
 
@@ -15,7 +15,7 @@ def patch(path, pairs, allow_missing=False):
     open(p, 'w').write(s)
     print(f'patched {path}')
 
-# ---------- api.ts: model_selection field ----------
+# ---------- api.ts ----------
 patch('src/lib/api.ts', [
     ("  level?: 1 | 2 | 3;",
      "  level?: 1 | 2 | 3;\n  model_selection?: string;"),
@@ -27,12 +27,21 @@ s = open(f'{root}/{C}').read()
 
 if "from '../lib/supabase'" not in s:
     anchor = "import { useModels, useSession } from '../hooks/useSession';"
-    assert s.count(anchor) == 1
+    assert s.count(anchor) == 1, 'useModels import'
     s = s.replace(anchor, anchor + "\nimport { supabase } from '../lib/supabase';", 1)
 
+# ensure useEffect imported from react
+import re
+m = re.search(r"import \{([^}]*)\} from 'react';", s)
+assert m, 'react import not found'
+if 'useEffect' not in m.group(1):
+    s = s.replace(m.group(0), m.group(0).replace('import {', 'import { useEffect,' if not m.group(1).strip().startswith('useEffect') else 'import {'), 1)
+    if 'useEffect' not in re.search(r"import \{([^}]*)\} from 'react';", s).group(1):
+        s = s.replace("} from 'react';", ", useEffect } from 'react';", 1) if not m.group(1).strip() else s
+
 anchor = "  const [model, setModel] = useState(defaultModel);"
-assert s.count(anchor) == 1
-s = s.replace(anchor, anchor + """
+assert s.count(anchor) == 1, 'model state anchor'
+ADDED_STATE = """
   const [founder, setFounder] = useState(false);
   const [modelSelection, setModelSelection] = useState('best');
   useEffect(() => {
@@ -42,11 +51,12 @@ s = s.replace(anchor, anchor + """
         if (data && (data as any).founder) setFounder(true);
       } catch {}
     })();
-  }, []);""", 1)
+  }, []);"""
+s = s.replace(anchor, anchor + ADDED_STATE, 1)
 
 anchor = """        mode: agentMode ? 'agent' : 'chat',
         model: useModel,"""
-assert s.count(anchor) == 1
+assert s.count(anchor) == 1, 'payload anchor'
 s = s.replace(anchor, anchor + """
         ...(founder && modelSelection !== 'best' ? { model_selection: modelSelection } : {}),""", 1)
 
@@ -62,8 +72,8 @@ anchor = """            <button
             >
               🛡 Safe
             </button>"""
-assert s.count(anchor) == 1
-s = s.replace(anchor, """            <button
+assert s.count(anchor) == 1, 'safe button anchor'
+SAFE_NEW = """            <button
               onClick={() =>
                 setSafeMode((v) => {
                   localStorage.setItem('infora-safe-mode', v ? '0' : '1');
@@ -74,7 +84,8 @@ s = s.replace(anchor, """            <button
               title="Safe Mode: review the estimated credits before every send"
             >
               🛡
-            </button>""", 1)
+            </button>"""
+s = s.replace(anchor, SAFE_NEW, 1)
 
 anchor = """            <button
               onClick={() => setAgentMode((v) => !v)}
@@ -83,8 +94,8 @@ anchor = """            <button
             >
               ⚡ Agent
             </button>"""
-assert s.count(anchor) == 1
-s = s.replace(anchor, """            <button
+assert s.count(anchor) == 1, 'agent button anchor'
+AGENT_NEW = """            <button
               onClick={() => {
                 if (!agentMode && !window.confirm('Turn on Agent mode? The AI can search the web and read pages to complete bigger tasks (uses more credits).')) return;
                 setAgentMode((v) => !v);
@@ -93,7 +104,8 @@ s = s.replace(anchor, """            <button
               title="Agent mode: AI can search the web and read pages to complete tasks"
             >
               ⚡
-            </button>""", 1)
+            </button>"""
+s = s.replace(anchor, AGENT_NEW, 1)
 
 FOUNDER_SELECT = '''            {founder && (
               <select
@@ -123,46 +135,23 @@ FOUNDER_SELECT = '''            {founder && (
             )}
 '''
 anchor = '\n            {speechSupported && ('
-assert s.count(anchor) == 1
+assert s.count(anchor) == 1, 'mic anchor'
 s = s.replace(anchor, '\n' + FOUNDER_SELECT + '            {speechSupported && (', 1)
 
 anchor = """            <p className="text-[10px] text-surface-400">Est. cost</p>
             <p className="text-sm font-semibold tabular-nums">{estCost === 0 ? 'Free' : `$${estCost.toFixed(4)}`}</p>"""
-assert s.count(anchor) == 1
-s = s.replace(anchor, """            <p className="text-[10px] text-surface-400">Est. credits</p>
-            <p className="text-sm font-semibold tabular-nums">{estCost === 0 ? 'Free' : `${Math.max(1, Math.ceil(estCost * 8300))} credits`}</p>""", 1)
+assert s.count(anchor) == 1, 'flightplan cost anchor'
+CREDITS_NEW = """            <p className="text-[10px] text-surface-400">Est. credits</p>
+            <p className="text-sm font-semibold tabular-nums">{estCost === 0 ? 'Free' : `${Math.max(1, Math.ceil(estCost * 8300))} credits`}</p>"""
+s = s.replace(anchor, CREDITS_NEW, 1)
 
 open(f'{root}/{C}', 'w').write(s)
 print('patched Chat.tsx')
 
-# ---------- Council.tsx: full rewrite (v5) — written via base64 to keep encoding safe ----------
-import base64
-COUNCIL_B64 = (
-'aW1wb3J0IHsgdXNlU3RhdGUgfSBmcm9tICdyZWFjdCc7CmltcG9ydCB7IHN1cGFi
-c2UgfSBmcm9tICcuLi9saWIvc3VwYWJhc2UnOwoKY29uc3QgUEVSU09OQVMgPSBbCiAgeyBpZDogJ2RlZXBf
-cmVzZWFyY2gnLCBuYW1lOiAnRGVlcCBSZXNlYXJjaCBFeHBlcnQnLCBlbW9qaTogJ8KP8o+OJyB9LAogIHsg
-aWQ6ICdwcm9ibGVtX3NvbHZpbmcnLCBuYW1lOiAnUHJvYmxlbS1Tb2x2aW5nIFN0cmF0ZWdpc3QnLCBlbW9q
-aTogJ17pl6AnIH0sCiAgeyBpZDogJ2J1c2luZXNzJywgbmFtZTogJ0J1c2luZXNzIEFuYWx5c3QnLCBlbW9q
-aTogJ8KPFOKAkyIH0sCiAgeyBpZDogJ2NvZGluZycsIG5hbWU6ICdDb2RpbmcgQXJjaGl0ZWN0JywgZW1v
-amk6ICdfLh9QscKkJyB9LAogIHsgaWQ6ICdkYXRhX3NjaWVuY2UnLCBuYW1lOiAnRGF0YSBTY2llbnRpc3Qn
-LCBlbW9qaTogJ8KPFMKAmyB9LAogIHsgaWQ6ICdtYXRoJywgbmFtZTogJ01hdGggR2VuaXVzJywgZW1vamk6
-ICdfLn2ZomzhuqInIH0sCiAgeyBpZDogJ2NyZWF0aXZlJywgbmFtZTogJ0NyZWF0aXZlIFdyaXRlcicsIGVt
-b2ppOiAn4paDIsOJUicgfSwKICB7IGlkOiAnbGVnYWwnLCBuYW1lOiAnTGVnYWwgQWR2aXNvcicsIGVtb2pp
-OiAn4p2k77iPJyB9LAogIHsgaWQ6ICdmaW5hbmNlJywgbmFtZTogJ0ZpbmFuY2UgRXhwZXJ0JywgZW1vamk6
-ICdfLh9Qvw5YJyB9LAogIHsgaWQ6ICdtYXJrZXRpbmcnLCBuYW1lOiAnTWFya2V0aW5nIFN0cmF0ZWdp
-c3QnLCBlbW9qaTogJ8KPgO+KkyB9LAogIHsgaWQ6ICdzY2llbmNlJywgbmFtZTogJ1NjaWVudGlmaWMgQW5h
-bHlzdCcsIGVtb2ppOiAn4pOQnCcgfSwKICB7IGlkOiAnaGlzdG9yeScsIG5hbWU6ICdIaXN0b3J5IFNjaG9s
-YXInLCBlbW9qaTogJ8KQnPCrUCcgfSwKICB7IGlkOiAnbWVkaWNhbCcsIG5hbWU6ICdNZWRpY2FsIEluZm9y
-bWF0aW9uIEV4cGVydCcsIGVtb2ppOiAn6qGvIAJ9LAogIHsgaWQ6ICdjYXJlZXInLCBuYW1lOiAnQ2FyZWVy
-IENvdW5zZWxvcicsIGVtb2ppOiAn4pntnScgfSwKICB7IGlkOiAncHN5Y2hvbG9neScsIG5hbWU6ICdQc3lj
-aG9sb2dpc3QgJiBDb2FjaCcsIGVtb2ppOiAn4p6QmCcgfSwKICB7IGlkOiAnc2tlcHRpYycsIG5hbWU6
-IiBEZXZpbCdzIEFkdm9jYXRlIiwgZW1vamk6ICfwn5K8IiB9LAogIHsgaWQ6ICd0ZWFjaGVyJywgbmFtZTog
-J1RlYWNoZXIgJiBFeHBsYWluZXInLCBlbW9qaTogJ8KPmsKtwrvLo8KkJyB9LAogIHsgaWQ6ICdsaW5ndWlz
-dCcsIG5hbWU6ICdUcmFuc2xhdG9yICYgTGFuZ3Vpc3QnLCBlbW9qaTogJ8KPli4nIH0sCiAgeyBpZDogJ3Rl
-Y2hfdHJlbmRzJywgbmFtZTogJ1RlY2ggVHJlbmQgQW5hbHlzdCcsIGVtb2ppOiAn8J+TpycgfSwKICB7IGlk
-OiAnZWRpdG9yJywgbmFtZTogJ0Vzc2F5IEVkaXRvcicsIGVtb2ppOiAn4pLmlCcETY0pcgIH0sCl07Cgpp
-bnRlcmZhY2UgQW5zd2VyIHsKICBwZXJzb25hOiBzdHJpbmc7CiAgZW1vamk6IHN0cmluZzsKICBjb250ZW50
-OiBzdHJpbmc7CiAgb2s6IGJvb2xlYW47Cn0K'
-)
-# NOTE: placeholder - real content assembled below
-print('assembling Council.tsx')
+# ---------- Council.tsx: write from verified base64 ----------
+b64 = pathlib.Path(__file__).with_name('council.tsx.b64').read_text().strip()
+tsx = base64.b64decode(b64)
+open(f'{root}/src/routes/Council.tsx', 'wb').write(tsx)
+print('wrote Council.tsx from base64,', len(tsx), 'bytes')
+
+print('Update 8 complete')
