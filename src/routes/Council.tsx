@@ -76,6 +76,24 @@ export default function Council() {
     setBusy(false);
   };
 
+    const shareCouncil = async () => {
+      const messages = [
+        ...answers.map((a) => ({ role: `${a.emoji} ${a.persona}`, content: a.content })),
+        ...(summary ? [{ role: '🏛︌ Council Summary', content: summary }] : []),
+      ];
+    if (!messages.length) return;
+      const { data, error: err } = await supabase.rpc('create_shared_link', {
+        p_title: question.trim().slice(0, 80) || 'Council session',
+        p_messages: { messages },
+      });
+      if (err || !data) {
+        alert('Could not create share link.');
+        return;
+      }
+      const url = `${window.location.origin}${import.meta.env.BASE_URL}s/${data}`;
+      try { await navigator.clipboard.writeText(url); } catch {}
+      alert(`Share link copied:\n${url}`);
+    };
   return (
     <div className="mx-auto max-w-3xl p-4 sm:p-6">
       <h1 className="text-2xl font-bold">⚖️ Council</h1>
@@ -147,6 +165,9 @@ export default function Council() {
         </div>
       )}
 
+      {(answers.length > 0 || summary) && !busy && (
+        <button onClick={shareCouncil} className="btn-primary mt-4">🔗 Share this council session</button>
+      )}
       {charged !== null && !busy && (
         <p className="mt-3 text-xs text-surface-400">Charged {charged} credits for this session.</p>
       )}
