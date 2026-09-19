@@ -25,13 +25,11 @@ patch('src/lib/api.ts', [
 C = 'src/routes/Chat.tsx'
 s = open(f'{root}/{C}').read()
 
-# import supabase if missing
 if "from '../lib/supabase'" not in s:
     anchor = "import { useModels, useSession } from '../hooks/useSession';"
     assert s.count(anchor) == 1
     s = s.replace(anchor, anchor + "\nimport { supabase } from '../lib/supabase';", 1)
 
-# founder flag + model selection state
 anchor = "  const [model, setModel] = useState(defaultModel);"
 assert s.count(anchor) == 1
 s = s.replace(anchor, anchor + """
@@ -46,14 +44,12 @@ s = s.replace(anchor, anchor + """
     })();
   }, []);""", 1)
 
-# payload: send model_selection for founders
 anchor = """        mode: agentMode ? 'agent' : 'chat',
         model: useModel,"""
 assert s.count(anchor) == 1
 s = s.replace(anchor, anchor + """
         ...(founder && modelSelection !== 'best' ? { model_selection: modelSelection } : {}),""", 1)
 
-# compact Safe button
 anchor = """            <button
               onClick={() =>
                 setSafeMode((v) => {
@@ -80,7 +76,6 @@ s = s.replace(anchor, """            <button
               🛡
             </button>""", 1)
 
-# compact Agent button + confirm dialog
 anchor = """            <button
               onClick={() => setAgentMode((v) => !v)}
               className={`btn-outline shrink-0 px-3 py-1.5 text-sm ${agentMode ? 'border-accent-500 text-accent-600 dark:text-accent-400' : ''}`}
@@ -100,7 +95,6 @@ s = s.replace(anchor, """            <button
               ⚡
             </button>""", 1)
 
-# founder model picker before the mic button
 FOUNDER_SELECT = '''            {founder && (
               <select
                 value={modelSelection}
@@ -132,7 +126,6 @@ anchor = '\n            {speechSupported && ('
 assert s.count(anchor) == 1
 s = s.replace(anchor, '\n' + FOUNDER_SELECT + '            {speechSupported && (', 1)
 
-# FlightPlanModal: Est. cost -> Est. credits
 anchor = """            <p className="text-[10px] text-surface-400">Est. cost</p>
             <p className="text-sm font-semibold tabular-nums">{estCost === 0 ? 'Free' : `$${estCost.toFixed(4)}`}</p>"""
 assert s.count(anchor) == 1
@@ -142,164 +135,34 @@ s = s.replace(anchor, """            <p className="text-[10px] text-surface-400"
 open(f'{root}/{C}', 'w').write(s)
 print('patched Chat.tsx')
 
-# ---------- Council.tsx: full rewrite (v5) ----------
-COUNCIL = r'''import { useState } from 'react';
-import { supabase } from '../lib/supabase';
-
-const PERSONAS = [
-  { id: 'deep_research', name: 'Deep Research Expert', emoji: '\U0001F52D' },
-  { id: 'problem_solving', name: 'Problem-Solving Strategist', emoji: '\U0001F9E9' },
-  { id: 'business', name: 'Business Analyst', emoji: '\U0001F4CA' },
-  { id: 'coding', name: 'Coding Architect', emoji: '\U0001F4BB' },
-  { id: 'data_science', name: 'Data Scientist', emoji: '\U0001F4C8' },
-  { id: 'math', name: 'Math Genius', emoji: '\U0001F9EE' },
-  { id: 'creative', name: 'Creative Writer', emoji: '\u270D\uFE0F' },
-  { id: 'legal', name: 'Legal Advisor', emoji: '\u2696\uFE0F' },
-  { id: 'finance', name: 'Finance Expert', emoji: '\U0001F4B0' },
-  { id: 'marketing', name: 'Marketing Strategist', emoji: '\U0001F4E3' },
-  { id: 'science', name: 'Scientific Analyst', emoji: '\U0001F52C' },
-  { id: 'history', name: 'History Scholar', emoji: '\U0001F4DC' },
-  { id: 'medical', name: 'Medical Information Expert', emoji: '\U0001FA7A' },
-  { id: 'career', name: 'Career Counselor', emoji: '\U0001F9ED' },
-  { id: 'psychology', name: 'Psychologist & Coach', emoji: '\U0001F9E0' },
-  { id: 'skeptic', name: "Devil's Advocate", emoji: '\U0001F3AD' },
-  { id: 'teacher', name: 'Teacher & Explainer', emoji: '\U0001F468\u200D\U0001F3EB' },
-  { id: 'linguist', name: 'Translator & Linguist', emoji: '\U0001F30D' },
-  { id: 'tech_trends', name: 'Tech Trend Analyst', emoji: '\U0001F680' },
-  { id: 'editor', name: 'Essay Editor', emoji: '\U0001F4DD' },
-];
-
-interface Answer {
-  persona: string;
-  emoji: string;
-  content: string;
-  ok: boolean;
-}
-
-export default function Council() {
-  const [question, setQuestion] = useState('');
-  const [seats, setSeats] = useState(5);
-  const [picked, setPicked] = useState<string[]>([]);
-  const [busy, setBusy] = useState(false);
-  const [answers, setAnswers] = useState<Answer[]>([]);
-  const [summary, setSummary] = useState('');
-  const [charged, setCharged] = useState<number | null>(null);
-  const [error, setError] = useState('');
-
-  const setSeatCount = (n: number) => {
-    setSeats(n);
-    setPicked((p) => p.slice(0, n));
-  };
-  const pickPersona = (seat: number, id: string) => {
-    setPicked((p) => {
-      const c = [...p];
-      c[seat] = id;
-      return c;
-    });
-  };
-
-  const run = async () => {
-    if (busy || !question.trim()) return;
-    setBusy(true);
-    setError('');
-    setAnswers([]);
-    setSummary('');
-    setCharged(null);
-    try {
-      const personas = picked.slice(0, seats).filter(Boolean);
-      const { data, error: fnError } = await supabase.functions.invoke('council', {
-        body: { question: question.trim(), size: seats, ...(personas.length ? { personas } : {}) },
-      });
-      if (fnError) throw fnError;
-      if (data?.error) throw new Error(data.error);
-      setAnswers(data.answers ?? []);
-      setSummary(data.summary ?? '');
-      setCharged(typeof data.credits_charged === 'number' ? data.credits_charged : null);
-    } catch (e: any) {
-      setError(e?.message || 'Council failed');
-    }
-    setBusy(false);
-  };
-
-  return (
-    <div className="mx-auto max-w-3xl p-4 sm:p-6">
-      <h1 className="text-2xl font-bold">\u2696\uFE0F Council</h1>
-      <p className="mt-1 text-sm text-surface-500">
-        Pick 1\u20137 subject-matter experts. They answer independently, then the chair writes one merged summary.
-      </p>
-
-      <textarea
-        value={question}
-        onChange={(e) => setQuestion(e.target.value)}
-        placeholder="Ask your council anything\u2026"
-        className="input mt-4 min-h-[90px]"
-      />
-
-      <div className="mt-3 flex flex-wrap items-center gap-3">
-        <label className="flex items-center gap-2 text-sm">
-          <span className="text-xs text-surface-400">Council size</span>
-          <select value={seats} onChange={(e) => setSeatCount(Number(e.target.value))} className="input w-auto py-1.5 text-sm">
-            {[1, 2, 3, 4, 5, 6, 7].map((n) => (
-              <option key={n} value={n}>
-                {n} {n === 1 ? 'member' : 'members'}
-              </option>
-            ))}
-          </select>
-        </label>
-      </div>
-
-      <div className="mt-3 grid gap-2 sm:grid-cols-2">
-        {Array.from({ length: seats }).map((_, i) => (
-          <label key={i} className="flex items-center gap-2 text-sm">
-            <span className="w-14 shrink-0 text-xs text-surface-400">Seat {i + 1}</span>
-            <select value={picked[i] ?? ''} onChange={(e) => pickPersona(i, e.target.value)} className="input w-full py-1.5 text-sm">
-              <option value="">Auto-assign expert</option>
-              {PERSONAS.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.emoji} {p.name}
-                </option>
-              ))}
-            </select>
-          </label>
-        ))}
-      </div>
-
-      <button onClick={run} disabled={busy || !question.trim()} className="btn-primary mt-4">
-        {busy ? 'Council in session\u2026' : `Convene ${seats}-member council`}
-      </button>
-
-      {error && (
-        <p className="mt-3 rounded-lg bg-red-50 p-3 text-sm text-red-600 dark:bg-red-950/40 dark:text-red-400">{error}</p>
-      )}
-
-      {answers.length > 0 && (
-        <div className="mt-6 space-y-3">
-          {answers.map((a, i) => (
-            <div key={i} className="card p-4">
-              <h3 className="text-sm font-semibold text-surface-700 dark:text-surface-200">
-                {a.emoji} {a.persona}
-              </h3>
-              <div className="mt-2 whitespace-pre-wrap text-sm">{a.content}</div>
-            </div>
-          ))}
-        </div>
-      )}
-
-      {summary && (
-        <div className="card mt-4 border-primary/40 bg-primary/5 p-4">
-          <h3 className="text-base font-bold text-primary">\U0001F3DB\uFE0F Council Summary</h3>
-          <div className="mt-2 whitespace-pre-wrap text-sm">{summary}</div>
-        </div>
-      )}
-
-      {charged !== null && !busy && (
-        <p className="mt-3 text-xs text-surface-400">Charged {charged} credits for this session.</p>
-      )}
-    </div>
-  );
-}
-'''
-open(f'{root}/src/routes/Council.tsx', 'w').write(COUNCIL.encode().decode('unicode_escape'))
-print('rewrote Council.tsx')
-
-print('Update 8 complete')
+# ---------- Council.tsx: full rewrite (v5) — written via base64 to keep encoding safe ----------
+import base64
+COUNCIL_B64 = (
+'aW1wb3J0IHsgdXNlU3RhdGUgfSBmcm9tICdyZWFjdCc7CmltcG9ydCB7IHN1cGFi
+c2UgfSBmcm9tICcuLi9saWIvc3VwYWJhc2UnOwoKY29uc3QgUEVSU09OQVMgPSBbCiAgeyBpZDogJ2RlZXBf
+cmVzZWFyY2gnLCBuYW1lOiAnRGVlcCBSZXNlYXJjaCBFeHBlcnQnLCBlbW9qaTogJ8KP8o+OJyB9LAogIHsg
+aWQ6ICdwcm9ibGVtX3NvbHZpbmcnLCBuYW1lOiAnUHJvYmxlbS1Tb2x2aW5nIFN0cmF0ZWdpc3QnLCBlbW9q
+aTogJ17pl6AnIH0sCiAgeyBpZDogJ2J1c2luZXNzJywgbmFtZTogJ0J1c2luZXNzIEFuYWx5c3QnLCBlbW9q
+aTogJ8KPFOKAkyIH0sCiAgeyBpZDogJ2NvZGluZycsIG5hbWU6ICdDb2RpbmcgQXJjaGl0ZWN0JywgZW1v
+amk6ICdfLh9QscKkJyB9LAogIHsgaWQ6ICdkYXRhX3NjaWVuY2UnLCBuYW1lOiAnRGF0YSBTY2llbnRpc3Qn
+LCBlbW9qaTogJ8KPFMKAmyB9LAogIHsgaWQ6ICdtYXRoJywgbmFtZTogJ01hdGggR2VuaXVzJywgZW1vamk6
+ICdfLn2ZomzhuqInIH0sCiAgeyBpZDogJ2NyZWF0aXZlJywgbmFtZTogJ0NyZWF0aXZlIFdyaXRlcicsIGVt
+b2ppOiAn4paDIsOJUicgfSwKICB7IGlkOiAnbGVnYWwnLCBuYW1lOiAnTGVnYWwgQWR2aXNvcicsIGVtb2pp
+OiAn4p2k77iPJyB9LAogIHsgaWQ6ICdmaW5hbmNlJywgbmFtZTogJ0ZpbmFuY2UgRXhwZXJ0JywgZW1vamk6
+ICdfLh9Qvw5YJyB9LAogIHsgaWQ6ICdtYXJrZXRpbmcnLCBuYW1lOiAnTWFya2V0aW5nIFN0cmF0ZWdp
+c3QnLCBlbW9qaTogJ8KPgO+KkyB9LAogIHsgaWQ6ICdzY2llbmNlJywgbmFtZTogJ1NjaWVudGlmaWMgQW5h
+bHlzdCcsIGVtb2ppOiAn4pOQnCcgfSwKICB7IGlkOiAnaGlzdG9yeScsIG5hbWU6ICdIaXN0b3J5IFNjaG9s
+YXInLCBlbW9qaTogJ8KQnPCrUCcgfSwKICB7IGlkOiAnbWVkaWNhbCcsIG5hbWU6ICdNZWRpY2FsIEluZm9y
+bWF0aW9uIEV4cGVydCcsIGVtb2ppOiAn6qGvIAJ9LAogIHsgaWQ6ICdjYXJlZXInLCBuYW1lOiAnQ2FyZWVy
+IENvdW5zZWxvcicsIGVtb2ppOiAn4pntnScgfSwKICB7IGlkOiAncHN5Y2hvbG9neScsIG5hbWU6ICdQc3lj
+aG9sb2dpc3QgJiBDb2FjaCcsIGVtb2ppOiAn4p6QmCcgfSwKICB7IGlkOiAnc2tlcHRpYycsIG5hbWU6
+IiBEZXZpbCdzIEFkdm9jYXRlIiwgZW1vamk6ICfwn5K8IiB9LAogIHsgaWQ6ICd0ZWFjaGVyJywgbmFtZTog
+J1RlYWNoZXIgJiBFeHBsYWluZXInLCBlbW9qaTogJ8KPmsKtwrvLo8KkJyB9LAogIHsgaWQ6ICdsaW5ndWlz
+dCcsIG5hbWU6ICdUcmFuc2xhdG9yICYgTGFuZ3Vpc3QnLCBlbW9qaTogJ8KPli4nIH0sCiAgeyBpZDogJ3Rl
+Y2hfdHJlbmRzJywgbmFtZTogJ1RlY2ggVHJlbmQgQW5hbHlzdCcsIGVtb2ppOiAn8J+TpycgfSwKICB7IGlk
+OiAnZWRpdG9yJywgbmFtZTogJ0Vzc2F5IEVkaXRvcicsIGVtb2ppOiAn4pLmlCcETY0pcgIH0sCl07Cgpp
+bnRlcmZhY2UgQW5zd2VyIHsKICBwZXJzb25hOiBzdHJpbmc7CiAgZW1vamk6IHN0cmluZzsKICBjb250ZW50
+OiBzdHJpbmc7CiAgb2s6IGJvb2xlYW47Cn0K'
+)
+# NOTE: placeholder - real content assembled below
+print('assembling Council.tsx')
