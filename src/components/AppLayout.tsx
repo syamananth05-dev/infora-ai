@@ -7,7 +7,7 @@ export default function AppLayout() {
   const { pathname } = useLocation();
   const showFloating = !sidebarOpen && !pathname.startsWith('/chat');
   return (
-    <div className="flex h-screen overflow-hidden">
+    <div className="flex h-dvh overflow-hidden">
       <Sidebar />
       <main className="relative flex-1 overflow-y-auto">
         {showFloating && (

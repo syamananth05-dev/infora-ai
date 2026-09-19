@@ -97,22 +97,26 @@ export default function Chat() {
     const SR: any = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
     if (!SR) return;
     if (listening) {
-      try { recRef.current?.stop(); recRef.current = null; } catch {}
+      try { recRef.current?.stop(); } catch {}
+      recRef.current = null;
+      setListening(false);
       return;
     }
     const rec = new SR();
-    rec.lang = "en-IN";
+    rec.lang = 'en-IN';
     rec.interimResults = true;
-    rec.continuous = true;
+    rec.continuous = false;
     rec.maxAlternatives = 1;
-    let finalText = "";
+    const base = input;
+    let finals = '';
     rec.onresult = (e: any) => {
-      let interim = "";
+      let interim = '';
       for (let i = e.resultIndex; i < e.results.length; i++) {
-        if (e.results[i].isFinal) finalText += e.results[i][0].transcript;
-        else interim += e.results[i][0].transcript;
+        const r = e.results[i];
+        if (r.isFinal) finals += r[0].transcript + ' ';
+        else interim += r[0].transcript;
       }
-      setInput((finalText + interim).replace(/\s+/g, " ").trimStart());
+      setInput(((base ? base + ' ' : '') + finals + interim).trimStart());
     };
     rec.onend = () => {
       if (recRef.current === rec) {
@@ -468,7 +472,7 @@ ${url}`);
   return (
     <div className="flex h-full flex-col">
       {/* Top bar */}
-      <header className="flex items-center gap-2 border-b border-surface-200 px-3 py-2 dark:border-surface-800">
+      <header className="sticky top-0 z-20 flex items-center gap-2 border-b border-surface-200 bg-surface-50/95 px-3 py-2 backdrop-blur dark:border-surface-800 dark:bg-surface-900/95">
         <button onClick={toggleSidebar} className="icon-btn" aria-label="Toggle sidebar" title="Toggle sidebar">☰</button>
         <button onClick={rename} className="min-w-0 flex-1 truncate text-left text-sm font-medium hover:text-accent-600" title="Rename">
           {conv?.title || 'New conversation'}
@@ -511,7 +515,7 @@ ${url}`);
       </header>
 
       {/* Messages */}
-      <div ref={scrollRef} className="flex-1 overflow-y-auto">
+      <div ref={scrollRef} className="min-h-0 flex-1 overflow-y-auto">
         <div className="mx-auto max-w-3xl px-4 py-6">
           {display.length === 0 && <EmptyState />}
           {display.map((m, i) => (
