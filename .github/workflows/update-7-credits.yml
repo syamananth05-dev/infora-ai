@@ -1,0 +1,28 @@
+name: Update 7 Credit Engine
+on:
+  workflow_dispatch:
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+      - name: Apply patch
+        run: python3 scripts/update-7-credits/patch.py .
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Typecheck
+        run: |
+          npm ci
+          npx tsc --noEmit -p tsconfig.json
+      - name: Commit
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "Update 7: credit engine frontend"
+          git push
