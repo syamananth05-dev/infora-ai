@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
+import { Markdown } from '../components/Markdown';
 
 interface SharedMessage {
   role: string;
@@ -45,7 +46,7 @@ export default function SharedView() {
           {messages.map((m, i) => (
             <div key={i} className={`card p-4 ${m.role === 'user' ? '' : 'border-accent-500/30'}`}>
               <p className="text-xs font-medium text-surface-400">{m.role === 'user' ? 'Question' : m.role === 'assistant' ? 'Infora' : m.role}</p>
-              <div className="mt-2 whitespace-pre-wrap text-sm">{m.content}</div>
+              <div className="mt-2 text-sm"><Markdown content={m.content} /></div>
             </div>
           ))}
         </div>

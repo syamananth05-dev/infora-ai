@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase';
+import { Markdown } from '../components/Markdown';
 
 const PERSONAS = [
   { id: 'deep_research', name: 'Deep Research Expert', emoji: '🔭' },
@@ -172,7 +173,7 @@ export default function Council() {
               <h3 className="text-sm font-semibold text-surface-700 dark:text-surface-200">
                 {a.emoji} {a.persona}
               </h3>
-              <div className="mt-2 whitespace-pre-wrap text-sm">{a.content}</div>
+              <div className="mt-2 text-sm"><Markdown content={a.content} /></div>
             </div>
           ))}
         </div>
@@ -181,7 +182,7 @@ export default function Council() {
       {summary && (
         <div className="card mt-4 border-primary/40 bg-primary/5 p-4">
           <h3 className="text-base font-bold text-primary">🏛️ Council Summary</h3>
-          <div className="mt-2 whitespace-pre-wrap text-sm">{summary}</div>
+          <div className="mt-2 text-sm"><Markdown content={summary} /></div>
         </div>
       )}
 

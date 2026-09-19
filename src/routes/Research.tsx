@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '../lib/supabase';
+import { Markdown } from '../components/Markdown';
 import { useSession } from '../hooks/useSession';
 
 interface Citation { title: string; url: string }
@@ -114,7 +115,7 @@ export default function Research() {
             <p className="mt-1 break-all rounded bg-primary/10 p-2 text-xs text-primary">{shareUrl}</p>
           ) : null}
           <div className="prose prose-sm mt-2 max-w-none whitespace-pre-wrap rounded-lg border border-surface-200 bg-surface-50 p-4 text-sm dark:border-surface-800 dark:bg-surface-900">
-            {result.content}
+            <Markdown content={result.content} />
           </div>
           {result.citations?.length ? (
             <div className="mt-3">
