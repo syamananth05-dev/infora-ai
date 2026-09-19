@@ -77,13 +77,14 @@ export default function Chat() {
     const SR: any = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
     if (!SR) return;
     if (listening) {
-      try { recRef.current?.stop(); } catch {}
+      try { recRef.current?.stop(); recRef.current = null; } catch {}
       return;
     }
     const rec = new SR();
     rec.lang = "en-IN";
     rec.interimResults = true;
-    rec.continuous = false;
+    rec.continuous = true;
+    rec.maxAlternatives = 1;
     let finalText = "";
     rec.onresult = (e: any) => {
       let interim = "";
@@ -93,7 +94,13 @@ export default function Chat() {
       }
       setInput((finalText + interim).replace(/\s+/g, " ").trimStart());
     };
-    rec.onend = () => setListening(false);
+    rec.onend = () => {
+      if (recRef.current === rec) {
+        try { rec.start(); } catch { setListening(false); }
+      } else {
+        setListening(false);
+      }
+    };
     rec.onerror = () => setListening(false);
     recRef.current = rec;
     setListening(true);
