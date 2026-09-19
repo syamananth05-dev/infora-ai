@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase';
 
 const PERSONAS = [
@@ -40,6 +40,17 @@ export default function Council() {
   const [summary, setSummary] = useState('');
   const [charged, setCharged] = useState<number | null>(null);
   const [error, setError] = useState('');
+  const [founder, setFounder] = useState(false);
+  const [freeMode, setFreeMode] = useState(false);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const { data } = await supabase.rpc('credit_summary');
+        setFounder(!!(data as any)?.founder);
+      } catch {}
+    })();
+  }, []);
 
   const setSeatCount = (n: number) => {
     setSeats(n);
@@ -63,7 +74,7 @@ export default function Council() {
     try {
       const personas = picked.slice(0, seats).filter(Boolean);
       const { data, error: fnError } = await supabase.functions.invoke('council', {
-        body: { question: question.trim(), size: seats, ...(personas.length ? { personas } : {}) },
+        body: { question: question.trim(), size: seats, model_selection: freeMode ? 'free' : 'best', ...(personas.length ? { personas } : {}) },
       });
       if (fnError) throw fnError;
       if (data?.error) throw new Error(data.error);
@@ -119,6 +130,15 @@ export default function Council() {
             ))}
           </select>
         </label>
+        {founder && (
+          <button
+            onClick={() => setFreeMode((v) => !v)}
+            className={`rounded-full border px-2.5 py-1 text-xs font-medium ${freeMode ? 'border-accent-500 bg-accent-500/10 text-accent-600 dark:text-accent-400' : 'border-surface-300 text-surface-500 dark:border-surface-600 dark:text-surface-300'}`}
+            title="Founder: run every expert on free AI models — zero cost, may be slower"
+          >
+            🆓 Free
+          </button>
+        )}
       </div>
 
       <div className="mt-3 grid gap-2 sm:grid-cols-2">
