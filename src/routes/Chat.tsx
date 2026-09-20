@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '../lib/supabase';
-import { streamChat, downloadFile, compressConversation } from '../lib/api';
+import { streamChat, downloadFile, compressConversation, rewritePrompt as apiRewritePrompt } from '../lib/api';
 import { useUIStore } from '../lib/stores';
 import { useModels, useSession } from '../hooks/useSession';
 import { timeAgo, formatTokens, formatCost, type Message, type ModelInfo } from '../lib/types';
@@ -12,6 +12,23 @@ import { Markdown, CopyButton } from '../components/Markdown';
 interface LocalMsg extends Message {
   streaming?: boolean;
 }
+
+const b64d = (b64: string): string => {
+  try {
+    if (typeof atob === 'function' && typeof TextDecoder !== 'undefined') {
+      const bin = atob(b64);
+      const bytes = new Uint8Array(bin.length);
+      for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+      return new TextDecoder().decode(bytes);
+    }
+  } catch {}
+  return '';
+};
+const EMOJI_WAND = b64d('8J+qhA==');
+const EMOJI_SPARKLE = b64d('4pyo');
+const EMOJI_REPEAT = b64d('8J+UgQ==');
+const EMOJI_SPEAKER = b64d('8J+Uig==');
+const REPROMPT_MODELS = ['deepseek/deepseek-v3.1', 'openai/gpt-5.6-luna', 'google/gemma-3-27b-it'];
 
 export default function Chat() {
   const { conversationId } = useParams();
@@ -88,6 +105,8 @@ export default function Chat() {
   const abortRef = useRef<AbortController | null>(null);
 
   const [listening, setListening] = useState(false);
+  const [rewriting, setRewriting] = useState(false);
+  const [rewritten, setRewritten] = useState(false);
   const recRef = useRef<any>(null);
   const speechSupported =
     typeof window !== "undefined" &&
@@ -138,6 +157,25 @@ export default function Chat() {
     recRef.current = rec;
     setListening(true);
     try { rec.start(); } catch { setListening(false); }
+  };
+
+  // Phase 26: magic prompt rewriter - tap before sending to improve the draft prompt
+  const rewrite = async () => {
+    const text = input.trim();
+    if (!text || rewriting) return;
+    setRewriting(true);
+    setError('');
+    try {
+      const r = await apiRewritePrompt(text);
+      if (r && r.rewritten) {
+        setInput(r.rewritten);
+        setRewritten(true);
+      }
+    } catch (e: any) {
+      setError(e?.message || 'Could not rewrite this prompt');
+    } finally {
+      setRewriting(false);
+    }
   };
 
   // ---- Load conversation + messages ----
@@ -237,7 +275,7 @@ export default function Chat() {
 
   // ---- Send ----
   const send = useCallback(
-    async (opts?: { content?: string; parentId?: string | null; model?: string }) => {
+    async (opts?: { content?: string; parentId?: string | null; model?: string; forceModel?: string }) => {
       setError('');
       setToolStatus(null);
       const text = (opts?.content ?? input).trim();
@@ -265,6 +303,7 @@ export default function Chat() {
         conversation_id: conversationId || undefined,
         mode: agentMode ? 'agent' : 'chat',
         model: useModel,
+        ...(opts?.forceModel ? { force_model: opts.forceModel } : {}),
         ...(founder && modelSelection !== 'best' ? { model_selection: modelSelection } : {}),
         content: text,
         parent_message_id: parentId,
@@ -290,6 +329,7 @@ export default function Chat() {
         };
         setStreamMsg(optimistic);
         setInput('');
+        setRewritten(false);
         setImages([]);
         setFileMeta([]);
       }
@@ -469,6 +509,19 @@ ${url}`);
     send({ content: lastUser.content, parentId: lastUser.parent_message_id ?? null });
   };
 
+  // Phase 26: reprompt - same question, forced different model (rotating pool)
+  const reprompt = (m: Message) => {
+    if (streaming) return;
+    const parent = m.parent_message_id ? msgMap.get(m.parent_message_id) : undefined;
+    if (!parent || parent.role !== 'user') {
+      setError('Could not find the original question for this reply.');
+      return;
+    }
+    const ordered = REPROMPT_MODELS.filter((x) => x !== m.model);
+    const pick = ordered[0] || REPROMPT_MODELS[0];
+    send({ content: parent.content, parentId: parent.parent_message_id ?? null, model: pick, forceModel: pick });
+  };
+
   return (
     <div className="flex h-full flex-col">
       {/* Top bar */}
@@ -526,6 +579,7 @@ ${url}`);
               streaming={!!(m as LocalMsg).streaming}
               onBranch={() => branchFrom(m)}
               onRegenerate={i === display.length - 1 ? regenerate : undefined}
+              onReprompt={m.role === 'assistant' && !(m as LocalMsg).streaming ? () => reprompt(m) : undefined}
             />
           ))}
           {error && (
@@ -611,6 +665,19 @@ ${url}`);
                 </button>
               )}
               <button
+                onClick={rewrite}
+                disabled={rewriting || !input.trim()}
+                className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full border text-sm transition-colors disabled:opacity-40 ${rewritten ? 'border-accent-500 bg-accent-500/10 text-accent-600 dark:text-accent-400' : 'border-surface-300 text-surface-500 hover:border-accent-500 hover:text-accent-600 dark:border-surface-600 dark:text-surface-300'}`}
+                title="Magic rewrite - let AI improve this prompt before you send it"
+              >
+                {rewriting ? <span className="inline-block h-3 w-3 animate-spin rounded-full border-2 border-accent-400 border-t-transparent" /> : EMOJI_WAND}
+              </button>
+              {rewritten && !rewriting && (
+                <span className="shrink-0 rounded-full bg-accent-500/10 px-2 py-0.5 text-[10px] font-medium text-accent-600 dark:text-accent-400" title="This prompt was improved by the magic rewriter - you can edit it before sending">
+                  rewritten {EMOJI_SPARKLE}
+                </span>
+              )}
+              <button
                 onClick={() =>
                   setSafeMode((v) => {
                     localStorage.setItem('infora-safe-mode', v ? '0' : '1');
@@ -694,15 +761,60 @@ function MessageBubble({
   streaming,
   onBranch,
   onRegenerate,
+  onReprompt,
 }: {
   msg: Message;
   isLast: boolean;
   streaming: boolean;
   onBranch: () => void;
   onRegenerate?: () => void;
+  onReprompt?: () => void;
 }) {
   const isUser = msg.role === 'user';
   const [previewHtml, setPreviewHtml] = useState<string | null>(null);
+  const [speaking, setSpeaking] = useState(false);
+  const speakingRef = useRef(false);
+  useEffect(() => {
+    return () => {
+      if (speakingRef.current) {
+        try { window.speechSynthesis.cancel(); } catch {}
+      }
+    };
+  }, []);
+  const speechOk = typeof window !== 'undefined' && 'speechSynthesis' in window;
+  const toggleRead = () => {
+    const synth = typeof window !== 'undefined' ? window.speechSynthesis : undefined;
+    if (!synth) return;
+    if (speaking) {
+      synth.cancel();
+      setSpeaking(false);
+      return;
+    }
+    synth.cancel();
+    const stripped = (msg.content || '')
+      .replace(/!\[([^\]]*)\]\(([^)]*)\)/g, '$1')
+      .replace(/\[([^\]]+)\]\(([^)]*)\)/g, '$1')
+      .replace(/```[a-zA-Z0-9]*\n?/g, '')
+      .replace(/[#*_`>~|^]/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+    const u = new SpeechSynthesisUtterance(stripped || (msg.content || ''));
+    const voices = synth.getVoices();
+    const v =
+      voices.find((x) => x.lang === 'en-IN') ||
+      voices.find((x) => x.lang === 'en-GB') ||
+      voices.find((x) => x.lang === 'en-US') ||
+      voices.find((x) => x.lang && x.lang.startsWith('en'));
+    if (v) u.voice = v;
+    u.lang = v?.lang || 'en-IN';
+    u.rate = 1;
+    u.onend = () => { speakingRef.current = false; setSpeaking(false); };
+    u.onerror = () => { speakingRef.current = false; setSpeaking(false); };
+    speakingRef.current = true;
+    setSpeaking(true);
+    synth.speak(u);
+  };
+
   const htmlBlocks = useMemo(() => {
     const out: string[] = [];
     const re = /```html\s*([\s\S]*?)```/g;
@@ -733,6 +845,20 @@ function MessageBubble({
       {!streaming && msg.content && (
         <div className="mt-1.5 flex items-center gap-1 pl-8 opacity-0 transition-opacity group-hover:opacity-100" style={{ opacity: 1 }}>
           <CopyButton text={msg.content} />
+          {!isUser && speechOk && (
+            <button
+              onClick={toggleRead}
+              className={`btn-ghost px-2 py-1 text-xs ${speaking ? 'text-accent-600 dark:text-accent-400' : ''}`}
+              title={speaking ? 'Stop reading aloud' : 'Read this reply aloud'}
+            >
+              {EMOJI_SPEAKER} {speaking ? 'Stop' : 'Listen'}
+            </button>
+          )}
+          {onReprompt && (
+            <button onClick={onReprompt} className="btn-ghost px-2 py-1 text-xs" title="Ask a different AI model the same question">
+              {EMOJI_REPEAT} Try another model
+            </button>
+          )}
           {htmlBlocks.length > 0 && (
             <button onClick={() => setPreviewHtml(htmlBlocks[0])} className="btn-ghost px-2 py-1 text-xs" title="Preview the website">👁 Preview</button>
           )}

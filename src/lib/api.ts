@@ -23,6 +23,7 @@ export interface ChatStreamPayload {
   project_id?: string | null;
   parent_message_id?: string | null;
   model?: string;
+  force_model?: string;
   level?: 1 | 2 | 3;
   model_selection?: string;
   mode?: 'chat' | 'agent';
@@ -149,4 +150,22 @@ export async function compressConversation(conversationId: string, model: string
     } catch {}
     throw new Error(message);
   }
+}
+
+export async function rewritePrompt(content: string): Promise<{ rewritten: string; model: string; fallback_free: boolean; credits_charged: number }> {
+  const headers = await authHeaders();
+  const res = await fetch(`${EDGE_FUNCTION_BASE}/chat`, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify({ action: 'rewrite_prompt', content }),
+  });
+  if (!res.ok) {
+    let message = `Rewrite failed (${res.status})`;
+    try {
+      const j = await res.json();
+      message = j.message || j.error || message;
+    } catch {}
+    throw new Error(message);
+  }
+  return res.json();
 }
