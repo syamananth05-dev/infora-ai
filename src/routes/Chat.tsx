@@ -28,7 +28,7 @@ const EMOJI_WAND = b64d('8J+qhA==');
 const EMOJI_SPARKLE = b64d('4pyo');
 const EMOJI_REPEAT = b64d('8J+UgQ==');
 const EMOJI_SPEAKER = b64d('8J+Uig==');
-const REPROMPT_MODELS = ['deepseek/deepseek-v3.1', 'openai/gpt-5.6-luna', 'google/gemma-3-27b-it'];
+const REPROMPT_MODELS = ['deepseek/deepseek-v4-flash-0731', 'openai/gpt-5.6-luna', 'google/gemma-3-27b-it'];
 
 export default function Chat() {
   const { conversationId } = useParams();
@@ -535,7 +535,7 @@ ${url}`);
           value={modelSelection}
           onChange={(v: string) => {
             setModelSelection(v);
-            setModel(v === 'best' ? '' : v === 'free' ? 'deepseek/deepseek-v4-flash-0731:free' : v);
+            setModel(v === 'best' ? '' : v === 'free' ? 'nvidia/nemotron-3-super-120b-a12b:free' : v);
           }}
         />
         <div className="hidden items-center gap-2 md:flex">

@@ -10,16 +10,27 @@ interface ModelRow {
 }
 
 const PREMIUM = [
-  { id: 'deepseek/deepseek-v3.1', label: 'DeepSeek V3.1', note: 'Deepest thinking — code, analysis, reports' },
+  { id: 'deepseek/deepseek-v4-flash-0731', label: 'DeepSeek V4 Flash', note: 'Deepest thinking — code, analysis, reports' },
   { id: 'openai/gpt-5.6-luna', label: 'GPT-5.6 Luna', note: 'Balanced flagship' },
   { id: 'openai/gpt-4o-mini', label: 'GPT-4o mini', note: 'Fast everyday workhorse' },
-  { id: 'anthropic/claude-3.5-haiku-20241022', label: 'Claude Haiku', note: 'Sharp writing & summaries' },
 ];
 
 const FAST = [
   { id: 'google/gemma-3-27b-it', label: 'Gemma 3 27B', note: 'Fast & light' },
   { id: 'mistralai/mistral-nemo', label: 'Mistral Nemo', note: 'Fast & light' },
 ];
+
+// Update 21: live-verified free models (the old free slugs were retired by OpenRouter)
+const FREE_VERIFIED = [
+  { id: 'nvidia/nemotron-3-super-120b-a12b:free', label: 'Nemotron 3 Super', note: 'Smart free all-rounder' },
+  { id: 'nex-agi/nex-n2.5-pro:free', label: 'NEX N2.5 Pro', note: 'Strong free reasoning' },
+  { id: 'inclusionai/ling-3.0-flash-vl:free', label: 'Ling 3.0 Flash VL', note: 'Free, image-capable' },
+  { id: 'google/gemma-4-31b-it:free', label: 'Gemma 4 31B', note: 'Free everyday model' },
+];
+
+// Update 21: the founder search only offers verified models. Dead or app-gated OpenRouter
+// slugs (e.g. thinkingmachines/inkling-small:free) must never be selectable again.
+const VERIFIED_IDS = [...PREMIUM, ...FAST, ...FREE_VERIFIED];
 
 function priceLabel(p?: number | null) {
   return typeof p === 'number' ? `$${p < 1 ? p.toFixed(3) : p.toFixed(2)}/M` : '';
@@ -81,9 +92,8 @@ export default function ModelPicker({
   const searchResults = useMemo(() => {
     const q = query.trim().toLowerCase();
     if (!q || !founder) return [];
-    return models
-      .filter((m) => m.name.toLowerCase().includes(q) || m.id.toLowerCase().includes(q))
-      .slice(0, 40);
+    return VERIFIED_IDS.filter((m) => m.label.toLowerCase().includes(q) || m.id.toLowerCase().includes(q))
+      .map((m) => ({ id: m.id, name: m.label, input_price_per_1m: models.find((x) => x.id === m.id)?.input_price_per_1m }));
   }, [models, query, founder]);
 
   const pick = (v: string) => {
@@ -130,6 +140,10 @@ export default function ModelPicker({
                       note={m.note}
                       right={priceLabel(models.find((x) => x.id === m.id)?.input_price_per_1m)}
                     />
+                  ))}
+                  <p className="px-3 pb-1 pt-3 text-[10px] font-semibold uppercase tracking-wide text-surface-400">Free (verified)</p>
+                  {FREE_VERIFIED.map((m) => (
+                    <PickerRow key={m.id} active={value === m.id} onClick={() => pick(m.id)} label={m.label} note={m.note} />
                   ))}
                   <p className="px-3 pb-1 pt-3 text-[10px] font-semibold uppercase tracking-wide text-surface-400">Fast & light</p>
                   {FAST.map((m) => (
