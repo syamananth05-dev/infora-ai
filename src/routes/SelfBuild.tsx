@@ -52,6 +52,25 @@ export default function SelfBuild() {
     loadList();
   };
 
+  const handleBuild = async () => {
+    setBusy(true);
+    setError('');
+    const { data, error: e } = await supabase.functions.invoke('selfbuild', { body: { action: 'build_all' } });
+    setBusy(false);
+    if (e || !data || data.error) {
+      setError((e && e.message) || (data && data.error) || 'Build failed');
+      return;
+    }
+    loadList();
+    const built: string[] = (data && data.built) || [];
+    const failed: string[] = (data && data.failed) || [];
+    if (built.length) {
+      alert('Built and deploying:\n' + built.join('\n') + (data.deployed ? '\n\nLive in about 2 minutes — refresh the site.' : '\n\nDeploy will start shortly.'));
+    } else {
+      alert('Nothing built.' + (failed.length ? '\nProblems:\n' + failed.join('\n') : ''));
+    }
+  };
+
   const setStatus = async (id: string, status: string) => {
     await supabase.functions.invoke('selfbuild', { body: { action: 'update_status', id, status } });
     loadList();
@@ -101,6 +120,14 @@ export default function SelfBuild() {
         {error ? <p className="mt-2 text-sm text-red-500">{error}</p> : null}
         <button onClick={handlePlan} disabled={busy || !request.trim()} className="btn-primary mt-3">
           {busy ? 'Planning…' : '⚡ Plan this feature'}
+        </button>
+        <button
+          onClick={handleBuild}
+          disabled={busy}
+          className="btn-outline mt-2 w-full"
+          title="The AI writes the actual code, commits it to GitHub and deploys it to the live site"
+        >
+          🔨 Build planned features now — code + deploy
         </button>
         <p className="mt-2 text-xs text-surface-400">
           The AI architect writes an implementation plan. Approved requests get built into the platform.
